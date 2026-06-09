@@ -1,0 +1,19 @@
+# Workflows
+## setup
+### user
+- brew
+- runtimes
+- custom
+- dotfiles
+- symlinks
+- shell
+- dev-setup
+### folder
+- dev-setup
+## dev-setup
+### user
+- claude
+### folder
+- claude
+- apm core
+- permissions

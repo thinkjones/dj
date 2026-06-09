@@ -1,0 +1,5 @@
+name = "permissions"
+summary = "sync AI permissions across runtimes"
+version = "0.1.0"
+scopes = ["user", "folder"]
+cadence = "regular"

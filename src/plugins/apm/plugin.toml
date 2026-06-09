@@ -1,0 +1,8 @@
+name = "apm"
+summary = "install an APM stack (arg: stack name)"
+version = "0.1.0"
+scopes = ["user", "folder"]
+cadence = "regular"
+[config]
+user = "config.md"
+folder = "config.md"

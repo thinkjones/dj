@@ -1,0 +1,7 @@
+name = "custom"
+summary = "custom install scripts"
+version = "0.1.0"
+scopes = ["user"]
+cadence = "regular"
+[config]
+user = "config.md"

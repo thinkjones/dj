@@ -1,0 +1,7 @@
+name = "symlinks"
+summary = "$HOME symlink flow"
+version = "0.1.0"
+scopes = ["user"]
+cadence = "regular"
+[config]
+user = "config.md"

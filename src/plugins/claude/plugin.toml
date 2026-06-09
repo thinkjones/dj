@@ -1,0 +1,8 @@
+name = "claude"
+summary = "Claude config (user.md / project.md)"
+version = "0.1.0"
+scopes = ["user", "folder"]
+cadence = "regular"
+[config]
+user = "user.md"
+folder = "project.md"

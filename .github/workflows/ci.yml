@@ -4,8 +4,6 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
-  pull_request:
-    branches: [main]
 
 permissions:
   contents: write
@@ -15,9 +13,22 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+
   test:
     name: Test
     runs-on: macos-latest
+    needs: lint
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable

@@ -23,7 +23,7 @@ jobs:
   build-release:
     name: Build Release (${{ matrix.target }})
     runs-on: macos-latest
-    if: github.ref_type == 'tag'
+    needs: test
     strategy:
       matrix:
         target:
@@ -50,8 +50,36 @@ jobs:
           name: dj-${{ matrix.target }}
           path: dj-${{ matrix.target }}.tar.gz
 
-  release:
-    name: Release
+  release-latest:
+    name: Update Latest Release
+    runs-on: macos-latest
+    needs: build-release
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Delete old latest release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest --yes --repo ${{ github.repository }} || true
+      - name: Create latest release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: latest
+          name: Latest Build
+          body: Rolling release from main branch. Use tagged releases for stable versions.
+          files: artifacts/*.tar.gz
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-tag:
+    name: Create Tagged Release
     runs-on: macos-latest
     needs: build-release
     if: github.ref_type == 'tag'

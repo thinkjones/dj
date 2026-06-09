@@ -23,39 +23,12 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Tool self-management
-    #[command(name = "self")]
-    Selff {
-        #[command(subcommand)]
-        action: SelfAction,
-    },
-    /// Catalog management
-    Catalog {
-        #[command(subcommand)]
-        action: CatalogAction,
-    },
     /// Health check across all plugins
-    Doctor {
-        #[arg(long)]
-        explain: bool,
-        #[arg(long)]
-        json: bool,
-    },
-    /// List all catalog entries
-    List,
+    Doctor,
     /// Show dj + plugin versions
     Version,
-    /// Overview of installed plugins & workflows
-    Info,
     /// Set up your catalog for the first time
     Onboard,
-    /// <plugin|workflow> [verb] [args] [--user|--folder] [--dry-run]
-    #[command(external_subcommand)]
-    External(Vec<String>),
-}
-
-#[derive(Subcommand)]
-enum SelfAction {
     /// Regenerate all artifacts from catalog
     Rebuild,
     /// DESTRUCTIVE: wipe and reinstall dj
@@ -67,6 +40,11 @@ enum SelfAction {
         #[command(subcommand)]
         cmd: CompletionsCmd,
     },
+    /// Show all installed plugins and their catalog actions
+    Plugins,
+    /// <plugin|workflow> [verb] [args] [--user|--folder] [--dry-run]
+    #[command(external_subcommand)]
+    External(Vec<String>),
 }
 
 #[derive(Subcommand)]
@@ -84,28 +62,8 @@ enum CompletionsCmd {
     },
 }
 
-#[derive(Subcommand)]
-enum CatalogAction {
-    /// Show catalog info
-    Info,
-    /// Use a catalog source
-    Use {
-        #[arg(long)]
-        example: bool,
-        path: Option<String>,
-    },
-    /// Fetch a catalog from a GitHub repo
-    Fetch {
-        repo: String,
-        #[arg(long, default_value = "main")]
-        branch: String,
-    },
-    /// List all catalog entries
-    List,
-}
-
 fn main() -> anyhow::Result<()> {
-    let cli = Cli::parse();
+    let args = std::env::args().collect::<Vec<_>>();
 
     let cfg = Config::load().unwrap_or_else(|_| Config {
         catalog_root: dirs::home_dir()
@@ -120,42 +78,32 @@ fn main() -> anyhow::Result<()> {
     // Warn if catalog pins differ from built-in plugin versions
     check_catalog_versions(&cfg, &rt);
 
+    // Custom help: no args or --help
+    if args.len() <= 1 || args[1] == "--help" || args[1] == "-h" {
+        print_custom_help(&rt);
+        return Ok(());
+    }
+
+    // Parse with clap for everything else
+    let cli = Cli::parse();
+
     match cli.command {
         None => {
-            println!("dj — macOS developer workstation manager");
-            println!("Run `dj --help`, `dj list`, or `dj <plugin> info`.");
+            print_custom_help(&rt);
         }
-        Some(Commands::Selff { action }) => match action {
-            SelfAction::Rebuild => commands::rebuild::run(&cfg)?,
-            SelfAction::Reinstall { yes } => commands::reinstall::run(&cfg, yes)?,
-            SelfAction::Uninstall { yes } => commands::reinstall::uninstall(&cfg, yes)?,
-            SelfAction::Completions { cmd } => {
-                let mut cli_cmd = Cli::command();
-                match cmd {
-                    CompletionsCmd::Bash => commands::completions::print_completions(Shell::Bash, &mut cli_cmd),
-                    CompletionsCmd::Fish => commands::completions::print_completions(Shell::Fish, &mut cli_cmd),
-                    CompletionsCmd::Zsh => commands::completions::print_completions(Shell::Zsh, &mut cli_cmd),
-                    CompletionsCmd::Install { yes } => commands::completions::install(yes, &mut cli_cmd)?,
-                }
+        Some(Commands::Rebuild) => commands::rebuild::run(&cfg)?,
+        Some(Commands::Reinstall { yes }) => commands::reinstall::run(&cfg, yes)?,
+        Some(Commands::Uninstall { yes }) => commands::reinstall::uninstall(&cfg, yes)?,
+        Some(Commands::Completions { cmd }) => {
+            let mut cli_cmd = Cli::command();
+            match cmd {
+                CompletionsCmd::Bash => commands::completions::print_completions(Shell::Bash, &mut cli_cmd),
+                CompletionsCmd::Fish => commands::completions::print_completions(Shell::Fish, &mut cli_cmd),
+                CompletionsCmd::Zsh => commands::completions::print_completions(Shell::Zsh, &mut cli_cmd),
+                CompletionsCmd::Install { yes } => commands::completions::install(yes, &mut cli_cmd)?,
             }
-        },
-        Some(Commands::Catalog { action }) => match action {
-            CatalogAction::Info => commands::catalog::run(&cfg, commands::catalog::CatalogAction::Info)?,
-            CatalogAction::Use { example, path } => {
-                if example {
-                    commands::catalog::run(&cfg, commands::catalog::CatalogAction::UseExample)?
-                } else if let Some(path) = path {
-                    commands::catalog::run(&cfg, commands::catalog::CatalogAction::UseLocal { path: PathBuf::from(path) })?
-                } else {
-                    bail!("dj catalog use requires --example or a path");
-                }
-            }
-            CatalogAction::Fetch { repo, branch } => {
-                commands::catalog::run(&cfg, commands::catalog::CatalogAction::Fetch { repo, branch })?
-            }
-            CatalogAction::List => commands::catalog::run(&cfg, commands::catalog::CatalogAction::List)?,
-        },
-        Some(Commands::Doctor { explain: _, json: _ }) => {
+        }
+        Some(Commands::Doctor) => {
             // Global doctor: fan out over all plugins for all supported scopes
             for p in rt.plugin_iter() {
                 let m = p.manifest();
@@ -176,44 +124,26 @@ fn main() -> anyhow::Result<()> {
                 }
             }
         }
-        Some(Commands::List) => {
-            // Global list: fan out over all plugins
-            for p in rt.plugin_iter() {
-                let m = p.manifest();
-                let scope = if m.scopes.contains(&ScopeKind::User) {
-                    Scope::User
-                } else {
-                    Scope::Folder(std::path::PathBuf::new())
-                };
-                match rt.list_one(&m.name, &scope, &cfg) {
-                    Ok(items) => {
-                        if !items.is_empty() {
-                            println!("{}:", m.name);
-                            for item in items {
-                                println!("  {}", item);
-                            }
-                        }
-                    }
-                    Err(e) => eprintln!("{} — error: {}", m.name, e),
-                }
-            }
-        }
         Some(Commands::Version) => {
             println!("dj {}", env!("CARGO_PKG_VERSION"));
             for m in rt.manifests() {
                 println!("{} {}", m.name, m.version);
             }
         }
-        Some(Commands::Info) => {
-            println!("Plugins:");
-            for m in rt.manifests() {
-                println!("  {:<12} {}", m.name, m.summary);
+        Some(Commands::Plugins) => {
+            println!("{}", "Machine / User Setup".bold());
+            for p in rt.plugin_iter() {
+                let m = p.manifest();
+                if m.scopes.contains(&ScopeKind::User) && !m.scopes.contains(&ScopeKind::Folder) {
+                    print_plugin_line(&cfg, m);
+                }
             }
-            println!("Workflows:");
-            let mut names: Vec<_> = rt.workflows().keys().collect();
-            names.sort();
-            for n in names {
-                println!("  {n}");
+            println!("\n{}", "Folder / Project Setup".bold());
+            for p in rt.plugin_iter() {
+                let m = p.manifest();
+                if m.scopes.contains(&ScopeKind::Folder) {
+                    print_plugin_line(&cfg, m);
+                }
             }
         }
         Some(Commands::Onboard) => {
@@ -226,6 +156,50 @@ fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn print_plugin_line(cfg: &Config, m: &plugins::Manifest) {
+    let root = config::catalog_root(cfg);
+    let config_file = root.join(&m.name).join(m.config.get(&ScopeKind::User).unwrap_or(&"config.md".to_string()));
+    let has_config = config_file.exists();
+    let status = if has_config { "●".green().to_string() } else { "○".dimmed().to_string() };
+    println!("  {:<12} {} {}", m.name, status, m.summary);
+}
+
+fn print_custom_help(rt: &plugins::runtime::Runtime) {
+    println!("macOS developer workstation manager\n");
+    println!("Usage: dj [COMMAND]\n");
+
+    println!("{}", "Machine / User Setup".bold());
+    for p in rt.plugin_iter() {
+        let m = p.manifest();
+        if m.scopes.contains(&ScopeKind::User) && !m.scopes.contains(&ScopeKind::Folder) {
+            println!("  {:<12} {}", m.name, m.summary);
+        }
+    }
+
+    println!("\n{}", "Folder / Project Setup".bold());
+    for p in rt.plugin_iter() {
+        let m = p.manifest();
+        if m.scopes.contains(&ScopeKind::Folder) {
+            println!("  {:<12} {}", m.name, m.summary);
+        }
+    }
+
+    println!("\n{}", "Tool Management".bold());
+    println!("  {:<12} {}", "rebuild", "Regenerate all artifacts from catalog");
+    println!("  {:<12} {}", "reinstall", "DESTRUCTIVE: wipe and reinstall dj");
+    println!("  {:<12} {}", "uninstall", "Uninstall dj binary");
+    println!("  {:<12} {}", "completions", "Generate/install shell completions");
+    println!("  {:<12} {}", "plugins", "Show all installed plugins and catalog actions");
+    println!("  {:<12} {}", "doctor", "Health check across all plugins");
+    println!("  {:<12} {}", "version", "Show dj + plugin versions");
+    println!("  {:<12} {}", "onboard", "Set up your catalog for the first time");
+    println!("  {:<12} {}", "help", "Print this message or the help of the given subcommand(s)");
+
+    println!("\nOptions:");
+    println!("  -h, --help     Print help");
+    println!("  -V, --version  Print version");
 }
 
 fn scope_label(kind: ScopeKind) -> &'static str {

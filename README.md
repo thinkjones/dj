@@ -22,11 +22,10 @@ The bootstrap script downloads the latest `dj` binary for your architecture, ins
 
 ```bash
 dj onboard                    # Set up your catalog (example, GitHub repo, or local path)
-dj info                       # See installed plugins and workflows
 dj doctor                     # Health check everything
 dj setup run --user           # Full machine setup
 dj setup run --user --dry-run # Preview what would run
-dj list                       # List everything dj manages
+dj plugins                    # See installed plugins and catalog actions
 ```
 
 ---
@@ -43,22 +42,17 @@ dj <name> list  [--user|--folder [path]]
 dj <name> run   [--user|--folder [path]] [args…] [--dry-run]
 ```
 
-Top-level commands:
+Tool management commands:
 
 ```text
+dj rebuild                    # Regenerate all artifacts from catalog
+dj reinstall                  # Re-download dj from latest release
+dj uninstall                  # Remove the dj binary
+dj completions install        # Install shell completions
+dj plugins                    # Show all installed plugins and catalog actions
 dj doctor                     # Health check across all plugins
-dj list                       # List all managed entries
 dj version                    # Show dj + plugin versions
-dj info                       # Overview of plugins & workflows
 dj onboard                    # First-time catalog setup
-dj catalog info               # Show current catalog source & path
-dj catalog use --example      # Install the example catalog
-dj catalog use /path          # Use a local catalog
-dj catalog fetch owner/repo   # Fetch a catalog from GitHub
-dj self rebuild               # Regenerate artifacts from catalog
-dj self reinstall             # Re-download dj from latest release
-dj self uninstall             # Remove the dj binary
-dj self completions install   # Install shell completions
 ```
 
 ---
@@ -83,7 +77,7 @@ The catalog is a plain directory of markdown files at `~/.config/dj/catalog/`. I
   chezmoi/               # Dotfiles source tree
 ```
 
-After editing the catalog, run `dj self rebuild` to regenerate the Brewfile and `.zshrc` sentinel block.
+After editing the catalog, run `dj rebuild` to regenerate the Brewfile and `.zshrc` sentinel block.
 
 ---
 
@@ -105,6 +99,10 @@ Override the config location with `DJ_CONFIG_ROOT`.
 ```bash
 git clone git@github.com:thinkjones/dj.git
 cd dj
+
+# Optional: enable pre-commit hooks
+git config core.hooksPath .githooks
+
 cargo test
 cargo build --release
 ```

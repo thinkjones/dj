@@ -1,7 +1,7 @@
 use crate::cli::scope::ScopeKind;
-use crate::config::{catalog_root, Config};
-use crate::plugins::{Health, HealthStatus, Manifest, Plugin, PluginContext, PlanStep};
 use crate::commands;
+use crate::config::{catalog_root, Config};
+use crate::plugins::{Health, HealthStatus, Manifest, PlanStep, Plugin, PluginContext};
 use anyhow::Result;
 use std::path::PathBuf;
 
@@ -11,7 +11,9 @@ pub struct Dotfiles {
 
 impl Dotfiles {
     pub fn new() -> Dotfiles {
-        Dotfiles { manifest: Manifest::from_toml(include_str!("plugin.toml")).expect("dotfiles manifest") }
+        Dotfiles {
+            manifest: Manifest::from_toml(include_str!("plugin.toml")).expect("dotfiles manifest"),
+        }
     }
     fn source_dir(cfg: &Config) -> PathBuf {
         catalog_root(cfg).join("chezmoi")
@@ -19,11 +21,15 @@ impl Dotfiles {
 }
 
 impl Default for Dotfiles {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Plugin for Dotfiles {
-    fn manifest(&self) -> &Manifest { &self.manifest }
+    fn manifest(&self) -> &Manifest {
+        &self.manifest
+    }
 
     fn plan(&self, ctx: &PluginContext) -> Result<Vec<PlanStep>> {
         let dir = Self::source_dir(ctx.cfg);
@@ -38,7 +44,9 @@ impl Plugin for Dotfiles {
         if let Ok(entries) = std::fs::read_dir(&dir) {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if name.starts_with('.') { continue; }
+                if name.starts_with('.') {
+                    continue;
+                }
                 steps.push(PlanStep {
                     description: format!("  dotfile: {name}"),
                     mutates: false,
@@ -55,9 +63,15 @@ impl Plugin for Dotfiles {
     fn doctor(&self, ctx: &PluginContext) -> Result<Health> {
         let dir = Self::source_dir(ctx.cfg);
         if !dir.exists() {
-            return Ok(Health { status: HealthStatus::Missing, details: vec![format!("chezmoi source not found: {}", dir.display())] });
+            return Ok(Health {
+                status: HealthStatus::Missing,
+                details: vec![format!("chezmoi source not found: {}", dir.display())],
+            });
         }
-        Ok(Health { status: HealthStatus::Ok, details: vec![format!("chezmoi source: {}", dir.display())] })
+        Ok(Health {
+            status: HealthStatus::Ok,
+            details: vec![format!("chezmoi source: {}", dir.display())],
+        })
     }
 
     fn list(&self, ctx: &PluginContext) -> Result<Vec<String>> {

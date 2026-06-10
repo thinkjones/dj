@@ -1,10 +1,9 @@
 use crate::cli::scope::{Scope, ScopeKind};
-use crate::config::catalog_root;
-use crate::plugins::{Health, HealthStatus, Manifest, Plugin, PluginContext, PlanStep};
 use crate::commands;
+use crate::config::catalog_root;
+use crate::plugins::{Health, HealthStatus, Manifest, PlanStep, Plugin, PluginContext};
 use anyhow::Result;
 use dirs::home_dir;
-
 
 pub struct Claude {
     manifest: Manifest,
@@ -12,21 +11,30 @@ pub struct Claude {
 
 impl Claude {
     pub fn new() -> Claude {
-        Claude { manifest: Manifest::from_toml(include_str!("plugin.toml")).expect("claude manifest") }
+        Claude {
+            manifest: Manifest::from_toml(include_str!("plugin.toml")).expect("claude manifest"),
+        }
     }
 }
 
 impl Default for Claude {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Plugin for Claude {
-    fn manifest(&self) -> &Manifest { &self.manifest }
+    fn manifest(&self) -> &Manifest {
+        &self.manifest
+    }
 
     fn plan(&self, ctx: &PluginContext) -> Result<Vec<PlanStep>> {
         match &ctx.scope {
             Scope::User => Ok(vec![PlanStep {
-                description: format!("write Claude user settings ({})", ctx.cfg.default_agent_stack),
+                description: format!(
+                    "write Claude user settings ({})",
+                    ctx.cfg.default_agent_stack
+                ),
                 mutates: true,
             }]),
             Scope::Folder(_) => Ok(vec![PlanStep {
@@ -38,9 +46,7 @@ impl Plugin for Claude {
 
     fn run(&self, ctx: &PluginContext) -> Result<()> {
         match &ctx.scope {
-            Scope::User => {
-                commands::ai::run(ctx.cfg, "claude", "user", None, ctx.yes)
-            }
+            Scope::User => commands::ai::run(ctx.cfg, "claude", "user", None, ctx.yes),
             Scope::Folder(path) => {
                 let p = if path.as_os_str().is_empty() {
                     None
@@ -57,17 +63,29 @@ impl Plugin for Claude {
             Scope::User => {
                 let settings = claude_desktop_settings_path();
                 if settings.exists() {
-                    Ok(Health { status: HealthStatus::Ok, details: vec![format!("settings found: {}", settings.display())] })
+                    Ok(Health {
+                        status: HealthStatus::Ok,
+                        details: vec![format!("settings found: {}", settings.display())],
+                    })
                 } else {
-                    Ok(Health { status: HealthStatus::Missing, details: vec!["Claude user settings not found".into()] })
+                    Ok(Health {
+                        status: HealthStatus::Missing,
+                        details: vec!["Claude user settings not found".into()],
+                    })
                 }
             }
             Scope::Folder(_) => {
                 let project_md = catalog_root(ctx.cfg).join("claude").join("project.md");
                 if project_md.exists() {
-                    Ok(Health { status: HealthStatus::Ok, details: vec!["project.md present".into()] })
+                    Ok(Health {
+                        status: HealthStatus::Ok,
+                        details: vec!["project.md present".into()],
+                    })
                 } else {
-                    Ok(Health { status: HealthStatus::Missing, details: vec!["project.md not found".into()] })
+                    Ok(Health {
+                        status: HealthStatus::Missing,
+                        details: vec!["project.md not found".into()],
+                    })
                 }
             }
         }
@@ -80,20 +98,24 @@ impl Plugin for Claude {
     fn example_config(&self, scope: ScopeKind) -> Option<String> {
         match scope {
             ScopeKind::User => Some(include_str!("example.md").to_string()),
-            ScopeKind::Folder => Some("# Claude Project Settings\nFolder-scoped Claude configuration.\n".to_string()),
+            ScopeKind::Folder => {
+                Some("# Claude Project Settings\nFolder-scoped Claude configuration.\n".to_string())
+            }
         }
     }
 }
 
 #[cfg(target_os = "macos")]
 fn claude_desktop_settings_path() -> std::path::PathBuf {
-    home_dir().unwrap_or_default()
+    home_dir()
+        .unwrap_or_default()
         .join("Library/Application Support/Claude/settings.json")
 }
 
 #[cfg(not(target_os = "macos"))]
 fn claude_desktop_settings_path() -> std::path::PathBuf {
-    home_dir().unwrap_or_default()
+    home_dir()
+        .unwrap_or_default()
         .join(".config/Claude/settings.json")
 }
 
@@ -104,6 +126,9 @@ mod tests {
     fn manifest_loads_and_has_both_scopes() {
         let p = Claude::new();
         assert_eq!(p.manifest().name, "claude");
-        assert_eq!(p.manifest().scopes, vec![ScopeKind::User, ScopeKind::Folder]);
+        assert_eq!(
+            p.manifest().scopes,
+            vec![ScopeKind::User, ScopeKind::Folder]
+        );
     }
 }

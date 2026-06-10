@@ -40,7 +40,16 @@ fn cmd_info(cfg: &Config) -> Result<()> {
     }
 
     // Count plugin configs present
-    let plugins = ["brew", "runtimes", "custom", "symlinks", "shell", "apm", "claude", "permissions"];
+    let plugins = [
+        "brew",
+        "runtimes",
+        "custom",
+        "symlinks",
+        "shell",
+        "apm",
+        "claude",
+        "permissions",
+    ];
     let mut present = 0;
     for name in &plugins {
         if root.join(name).exists() {
@@ -67,7 +76,9 @@ fn cmd_use_example(cfg: &Config) -> Result<()> {
     let dest = catalog_root(cfg);
 
     // Try local source first (when running from source)
-    let example = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples").join("catalog");
+    let example = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("examples")
+        .join("catalog");
 
     if example.exists() {
         copy_dir_all(&example, &dest)?;
@@ -95,10 +106,15 @@ fn cmd_use_local(cfg: &Config, path: &Path) -> Result<()> {
     // Write config.toml with new catalog_root
     let config_path = crate::config::config_path();
     let content = fs::read_to_string(&config_path).unwrap_or_default();
-    let mut doc: toml::Value = content.parse().unwrap_or(toml::Value::Table(toml::Table::new()));
+    let mut doc: toml::Value = content
+        .parse()
+        .unwrap_or(toml::Value::Table(toml::Table::new()));
 
     if let Some(table) = doc.as_table_mut() {
-        table.insert("catalog_root".to_string(), toml::Value::String(path.to_string_lossy().to_string()));
+        table.insert(
+            "catalog_root".to_string(),
+            toml::Value::String(path.to_string_lossy().to_string()),
+        );
     }
 
     fs::write(&config_path, doc.to_string())?;
@@ -122,11 +138,24 @@ fn cmd_fetch(cfg: &Config, repo: &str, branch: &str) -> Result<()> {
     }
 
     // Try gh first, fallback to git
-    let has_gh = Command::new("gh").arg("auth").arg("status").output().map(|o| o.status.success()).unwrap_or(false);
+    let has_gh = Command::new("gh")
+        .arg("auth")
+        .arg("status")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
 
     let status = if has_gh {
         Command::new("gh")
-            .args(["repo", "clone", repo, &dest.to_string_lossy(), "--", "--branch", branch])
+            .args([
+                "repo",
+                "clone",
+                repo,
+                &dest.to_string_lossy(),
+                "--",
+                "--branch",
+                branch,
+            ])
             .status()
     } else {
         let url = format!("https://github.com/{}.git", repo);
@@ -174,12 +203,19 @@ fn copy_dir_all(src: &Path, dst: &Path) -> Result<()> {
 fn write_catalog_source(_cfg: &Config, source: &str) -> Result<()> {
     let config_path = crate::config::config_path();
     let content = fs::read_to_string(&config_path).unwrap_or_default();
-    let mut doc: toml::Value = content.parse().unwrap_or(toml::Value::Table(toml::Table::new()));
+    let mut doc: toml::Value = content
+        .parse()
+        .unwrap_or(toml::Value::Table(toml::Table::new()));
 
     if let Some(table) = doc.as_table_mut() {
-        let catalog_table = table.entry("catalog").or_insert_with(|| toml::Value::Table(toml::Table::new()));
+        let catalog_table = table
+            .entry("catalog")
+            .or_insert_with(|| toml::Value::Table(toml::Table::new()));
         if let Some(cat) = catalog_table.as_table_mut() {
-            cat.insert("source".to_string(), toml::Value::String(source.to_string()));
+            cat.insert(
+                "source".to_string(),
+                toml::Value::String(source.to_string()),
+            );
         }
     }
 

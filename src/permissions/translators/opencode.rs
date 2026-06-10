@@ -1,8 +1,8 @@
-use anyhow::Result;
-use std::path::Path;
-use serde_json::{json, Map, Value};
-use crate::permissions::{PatternCategory, TemplatePermissions};
 use super::{TranslationFile, TranslationResult};
+use crate::permissions::{PatternCategory, TemplatePermissions};
+use anyhow::Result;
+use serde_json::{json, Map, Value};
+use std::path::Path;
 
 pub fn translate(perms: &TemplatePermissions, dest: &Path) -> Result<TranslationResult> {
     // Read existing JSON
@@ -31,12 +31,27 @@ pub fn translate(perms: &TemplatePermissions, dest: &Path) -> Result<Translation
     }
 
     // webfetch policy
-    let has_webfetch_allow = perms.allow.iter().any(|p| p.category == PatternCategory::WebFetch);
-    let has_webfetch_deny  = perms.deny.iter().any(|p| p.category == PatternCategory::WebFetch);
-    let webfetch = if has_webfetch_allow { "allow" } else if has_webfetch_deny { "deny" } else { "ask" };
+    let has_webfetch_allow = perms
+        .allow
+        .iter()
+        .any(|p| p.category == PatternCategory::WebFetch);
+    let has_webfetch_deny = perms
+        .deny
+        .iter()
+        .any(|p| p.category == PatternCategory::WebFetch);
+    let webfetch = if has_webfetch_allow {
+        "allow"
+    } else if has_webfetch_deny {
+        "deny"
+    } else {
+        "ask"
+    };
 
     // websearch
-    let has_websearch_allow = perms.allow.iter().any(|p| p.category == PatternCategory::WebSearch);
+    let has_websearch_allow = perms
+        .allow
+        .iter()
+        .any(|p| p.category == PatternCategory::WebSearch);
 
     let mut permission = Map::new();
     permission.insert("bash".to_string(), Value::Object(bash_map));
@@ -49,13 +64,19 @@ pub fn translate(perms: &TemplatePermissions, dest: &Path) -> Result<Translation
     // Merge into existing root (preserve non-permission keys)
     let root_obj = root.as_object_mut().unwrap();
     if !root_obj.contains_key("$schema") {
-        root_obj.insert("$schema".to_string(), json!("https://opencode.ai/config.json"));
+        root_obj.insert(
+            "$schema".to_string(),
+            json!("https://opencode.ai/config.json"),
+        );
     }
     root_obj.insert("permission".to_string(), Value::Object(permission));
 
     let content = serde_json::to_string_pretty(&root)? + "\n";
     Ok(TranslationResult {
-        files: vec![TranslationFile { path: dest.to_path_buf(), content }],
+        files: vec![TranslationFile {
+            path: dest.to_path_buf(),
+            content,
+        }],
         warnings: vec![],
     })
 }
@@ -73,9 +94,12 @@ mod tests {
             allow: vec![],
             deny: vec![],
         };
-        tp.allow.push(parse_pattern("Bash(git:*)", Decision::Allow).unwrap());
-        tp.allow.push(parse_pattern("WebSearch", Decision::Allow).unwrap());
-        tp.deny.push(parse_pattern("Bash(rm -rf:*)", Decision::Deny).unwrap());
+        tp.allow
+            .push(parse_pattern("Bash(git:*)", Decision::Allow).unwrap());
+        tp.allow
+            .push(parse_pattern("WebSearch", Decision::Allow).unwrap());
+        tp.deny
+            .push(parse_pattern("Bash(rm -rf:*)", Decision::Deny).unwrap());
         tp
     }
 
@@ -97,7 +121,11 @@ mod tests {
     fn translate_merges_existing_schema() {
         let dir = TempDir::new().unwrap();
         let dest = dir.path().join("opencode.json");
-        std::fs::write(&dest, r#"{"$schema":"https://opencode.ai/config.json","theme":"dark"}"#).unwrap();
+        std::fs::write(
+            &dest,
+            r#"{"$schema":"https://opencode.ai/config.json","theme":"dark"}"#,
+        )
+        .unwrap();
         let perms = sample_perms();
         let result = translate(&perms, &dest).unwrap();
         let v: serde_json::Value = serde_json::from_str(&result.files[0].content).unwrap();

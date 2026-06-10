@@ -1,15 +1,14 @@
+use super::{TranslationFile, TranslationResult};
+use crate::permissions::TemplatePermissions;
 use anyhow::{Context, Result};
 use std::path::Path;
-use crate::permissions::TemplatePermissions;
-use super::{TranslationFile, TranslationResult};
 
 pub fn translate(perms: &TemplatePermissions, dest: &Path) -> Result<TranslationResult> {
     // Read existing JSON (if any)
     let mut value: serde_json::Value = if dest.exists() {
         let content = std::fs::read_to_string(dest)
             .with_context(|| format!("cannot read {}", dest.display()))?;
-        serde_json::from_str(&content)
-            .unwrap_or(serde_json::Value::Object(Default::default()))
+        serde_json::from_str(&content).unwrap_or(serde_json::Value::Object(Default::default()))
     } else {
         serde_json::Value::Object(Default::default())
     };
@@ -63,9 +62,12 @@ mod tests {
             allow: vec![],
             deny: vec![],
         };
-        tp.allow.push(parse_pattern("Bash(git:*)", Decision::Allow).unwrap());
-        tp.allow.push(parse_pattern("WebSearch", Decision::Allow).unwrap());
-        tp.deny.push(parse_pattern("Bash(rm -rf:*)", Decision::Deny).unwrap());
+        tp.allow
+            .push(parse_pattern("Bash(git:*)", Decision::Allow).unwrap());
+        tp.allow
+            .push(parse_pattern("WebSearch", Decision::Allow).unwrap());
+        tp.deny
+            .push(parse_pattern("Bash(rm -rf:*)", Decision::Deny).unwrap());
         tp
     }
 
@@ -89,7 +91,11 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let dest = dir.path().join("settings.json");
         // Write existing file with extra key
-        std::fs::write(&dest, r#"{"env": {"FOO": "bar"}, "permissions": {"allow": [], "deny": []}}"#).unwrap();
+        std::fs::write(
+            &dest,
+            r#"{"env": {"FOO": "bar"}, "permissions": {"allow": [], "deny": []}}"#,
+        )
+        .unwrap();
 
         let perms = sample_perms();
         let result = translate(&perms, &dest).unwrap();

@@ -1,7 +1,7 @@
 use crate::cli::scope::ScopeKind;
-use crate::config::{catalog_root, Config};
-use crate::plugins::{Health, HealthStatus, Manifest, Plugin, PluginContext, PlanStep};
 use crate::commands;
+use crate::config::{catalog_root, Config};
+use crate::plugins::{Health, HealthStatus, Manifest, PlanStep, Plugin, PluginContext};
 use anyhow::Result;
 
 pub struct Apm {
@@ -10,7 +10,9 @@ pub struct Apm {
 
 impl Apm {
     pub fn new() -> Apm {
-        Apm { manifest: Manifest::from_toml(include_str!("plugin.toml")).expect("apm manifest") }
+        Apm {
+            manifest: Manifest::from_toml(include_str!("plugin.toml")).expect("apm manifest"),
+        }
     }
     fn stacks(cfg: &Config) -> Vec<String> {
         let dir = catalog_root(cfg).join("apm");
@@ -19,7 +21,8 @@ impl Apm {
         }
         std::fs::read_dir(&dir)
             .map(|entries| {
-                entries.flatten()
+                entries
+                    .flatten()
                     .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
                     .map(|e| e.file_name().to_string_lossy().to_string())
                     .collect()
@@ -29,11 +32,15 @@ impl Apm {
 }
 
 impl Default for Apm {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Plugin for Apm {
-    fn manifest(&self) -> &Manifest { &self.manifest }
+    fn manifest(&self) -> &Manifest {
+        &self.manifest
+    }
 
     fn plan(&self, ctx: &PluginContext) -> Result<Vec<PlanStep>> {
         let stack = ctx.args.first().map(String::as_str).unwrap_or("core");
@@ -59,9 +66,15 @@ impl Plugin for Apm {
     fn doctor(&self, ctx: &PluginContext) -> Result<Health> {
         let stacks = Self::stacks(ctx.cfg);
         if stacks.is_empty() {
-            return Ok(Health { status: HealthStatus::Missing, details: vec!["No APM stacks found in catalog".into()] });
+            return Ok(Health {
+                status: HealthStatus::Missing,
+                details: vec!["No APM stacks found in catalog".into()],
+            });
         }
-        Ok(Health { status: HealthStatus::Ok, details: vec![format!("Available stacks: {}", stacks.join(", "))] })
+        Ok(Health {
+            status: HealthStatus::Ok,
+            details: vec![format!("Available stacks: {}", stacks.join(", "))],
+        })
     }
 
     fn list(&self, ctx: &PluginContext) -> Result<Vec<String>> {
@@ -80,6 +93,9 @@ mod tests {
     fn manifest_loads_and_has_both_scopes() {
         let p = Apm::new();
         assert_eq!(p.manifest().name, "apm");
-        assert_eq!(p.manifest().scopes, vec![ScopeKind::User, ScopeKind::Folder]);
+        assert_eq!(
+            p.manifest().scopes,
+            vec![ScopeKind::User, ScopeKind::Folder]
+        );
     }
 }

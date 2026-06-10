@@ -13,7 +13,10 @@ pub fn install(yes: bool, cmd: &mut clap::Command) -> Result<()> {
     let (shell, dest, hint) = match shell_name.as_str() {
         "zsh" => (
             Shell::Zsh,
-            dirs::home_dir().unwrap_or_default().join(".zfunc").join("_dj"),
+            dirs::home_dir()
+                .unwrap_or_default()
+                .join(".zfunc")
+                .join("_dj"),
             None,
         ),
         "bash" => (

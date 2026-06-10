@@ -30,7 +30,10 @@ pub fn parse(path: &Path) -> Result<Vec<BrewEntry>> {
     let parser = Parser::new(&content);
     for event in parser {
         match event {
-            Event::Start(Tag::Heading { level: HeadingLevel::H1, .. }) => {
+            Event::Start(Tag::Heading {
+                level: HeadingLevel::H1,
+                ..
+            }) => {
                 capture_text = true;
                 text_buf.clear();
             }
@@ -43,7 +46,10 @@ pub fn parse(path: &Path) -> Result<Vec<BrewEntry>> {
                     _ => BrewKind::Formula,
                 };
             }
-            Event::Start(Tag::Heading { level: HeadingLevel::H2, .. }) => {
+            Event::Start(Tag::Heading {
+                level: HeadingLevel::H2,
+                ..
+            }) => {
                 capture_text = true;
                 text_buf.clear();
             }

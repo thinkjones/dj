@@ -5,7 +5,8 @@ use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn store_path() -> PathBuf {
-    dirs::home_dir().unwrap_or_default()
+    dirs::home_dir()
+        .unwrap_or_default()
         .join(".local/share/dj/runs.toml")
 }
 
@@ -19,7 +20,10 @@ pub fn load() -> BTreeMap<String, String> {
 
 pub fn record(key: &str) -> Result<()> {
     let mut all = load();
-    let secs = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
     all.insert(key.to_string(), secs.to_string());
     let path = store_path();
     if let Some(parent) = path.parent() {

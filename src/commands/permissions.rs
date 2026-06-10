@@ -8,12 +8,12 @@ use std::path::Path;
 use crate::{
     config::{catalog_root, Config},
     permissions::{
-        template::{read_template, template_path, template_sha256},
         targets::{
             all_targets, global_destination, has_project_scope, is_global_installed,
             project_destination, project_marker_exists, project_marker_path, resolve_target,
             TargetId,
         },
+        template::{read_template, template_path, template_sha256},
         translators::{antigravity, claude, codex, gemini, kimicode, opencode, TranslationResult},
         TemplatePermissions,
     },
@@ -24,14 +24,25 @@ pub enum PermissionsAction {
     // TargetsList and Diff are retained for the plugin-runtime sub-project;
     // not reachable via the current CLI (only Sync is used via the plugin).
     TargetsList,
-    Sync { target: String, global: bool, yes: bool },
-    Diff { target: String, global: bool },
+    Sync {
+        target: String,
+        global: bool,
+        yes: bool,
+    },
+    Diff {
+        target: String,
+        global: bool,
+    },
 }
 
 pub fn run(cfg: &Config, action: PermissionsAction) -> Result<()> {
     match action {
         PermissionsAction::TargetsList => cmd_targets_list(cfg),
-        PermissionsAction::Sync { target, global, yes } => cmd_sync(cfg, &target, global, yes),
+        PermissionsAction::Sync {
+            target,
+            global,
+            yes,
+        } => cmd_sync(cfg, &target, global, yes),
         PermissionsAction::Diff { target, global } => cmd_diff(cfg, &target, global),
     }
 }
@@ -49,11 +60,7 @@ fn cmd_targets_list(cfg: &Config) -> Result<()> {
             &sha[..16]
         );
     } else {
-        println!(
-            "TEMPLATE  {}  {}",
-            tpl_path.display(),
-            "✗ missing".red()
-        );
+        println!("TEMPLATE  {}  {}", tpl_path.display(), "✗ missing".red());
     }
 
     let cwd = std::env::current_dir().unwrap_or_default();
@@ -76,7 +83,13 @@ fn cmd_targets_list(cfg: &Config) -> Result<()> {
         } else {
             "✗".dimmed().to_string()
         };
-        table.add_row([t.name, &t.support.to_string(), &global_check, &project_check, t.notes]);
+        table.add_row([
+            t.name,
+            &t.support.to_string(),
+            &global_check,
+            &project_check,
+            t.notes,
+        ]);
     }
     println!("{table}");
     Ok(())
@@ -87,7 +100,10 @@ fn cmd_targets_list(cfg: &Config) -> Result<()> {
 fn cmd_sync(cfg: &Config, target_str: &str, global: bool, yes: bool) -> Result<()> {
     let tpl_path = template_path(&catalog_root(cfg));
     if !tpl_path.exists() {
-        bail!("template not found at {}; create it first", tpl_path.display());
+        bail!(
+            "template not found at {}; create it first",
+            tpl_path.display()
+        );
     }
     let perms = read_template(&tpl_path)?;
 
@@ -194,7 +210,10 @@ fn sync_one(
 fn cmd_diff(cfg: &Config, target_str: &str, global: bool) -> Result<()> {
     let tpl_path = template_path(&catalog_root(cfg));
     if !tpl_path.exists() {
-        bail!("template not found at {}; create it first", tpl_path.display());
+        bail!(
+            "template not found at {}; create it first",
+            tpl_path.display()
+        );
     }
     let perms = read_template(&tpl_path)?;
 
@@ -288,8 +307,9 @@ fn translate_target(
     }
 
     let primary_dest = if global {
-        let dest = global_destination(id)
-            .ok_or_else(|| anyhow::anyhow!("{}: cannot determine global destination", target_name(id)))?;
+        let dest = global_destination(id).ok_or_else(|| {
+            anyhow::anyhow!("{}: cannot determine global destination", target_name(id))
+        })?;
         let parent = dest.parent().unwrap_or(Path::new("/")).to_path_buf();
         if !parent.exists() {
             return Err(anyhow::anyhow!(
@@ -320,7 +340,12 @@ fn translate_target(
     }
 }
 
-fn write_checksum(cfg: &Config, id: TargetId, global: bool, _perms: &TemplatePermissions) -> Result<()> {
+fn write_checksum(
+    cfg: &Config,
+    id: TargetId,
+    global: bool,
+    _perms: &TemplatePermissions,
+) -> Result<()> {
     let tpl_path = template_path(&catalog_root(cfg));
     if !tpl_path.exists() {
         return Ok(());

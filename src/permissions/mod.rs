@@ -1,5 +1,5 @@
-pub mod template;
 pub mod targets;
+pub mod template;
 pub mod translators;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,13 +55,7 @@ impl ParsedPattern {
             Some(cmd.to_string())
         } else if inner.contains('*') || inner.contains('|') {
             // embedded wildcard: use first word as base
-            Some(
-                inner
-                    .split_whitespace()
-                    .next()
-                    .unwrap_or(inner)
-                    .to_string(),
-            )
+            Some(inner.split_whitespace().next().unwrap_or(inner).to_string())
         } else {
             Some(inner.to_string())
         }
@@ -100,10 +94,7 @@ pub fn parse_pattern(raw: &str, decision: Decision) -> Option<ParsedPattern> {
         });
     }
 
-    if let Some(inner) = raw
-        .strip_prefix("Bash(")
-        .and_then(|s| s.strip_suffix(")"))
-    {
+    if let Some(inner) = raw.strip_prefix("Bash(").and_then(|s| s.strip_suffix(")")) {
         let pattern = if let Some(cmd) = inner.strip_suffix(":*") {
             format!("{} *", cmd)
         } else {
@@ -118,10 +109,7 @@ pub fn parse_pattern(raw: &str, decision: Decision) -> Option<ParsedPattern> {
         });
     }
 
-    if let Some(inner) = raw
-        .strip_prefix("Edit(")
-        .and_then(|s| s.strip_suffix(")"))
-    {
+    if let Some(inner) = raw.strip_prefix("Edit(").and_then(|s| s.strip_suffix(")")) {
         return Some(ParsedPattern {
             category: PatternCategory::Edit,
             decision,
@@ -131,10 +119,7 @@ pub fn parse_pattern(raw: &str, decision: Decision) -> Option<ParsedPattern> {
         });
     }
 
-    if let Some(inner) = raw
-        .strip_prefix("Read(")
-        .and_then(|s| s.strip_suffix(")"))
-    {
+    if let Some(inner) = raw.strip_prefix("Read(").and_then(|s| s.strip_suffix(")")) {
         return Some(ParsedPattern {
             category: PatternCategory::Read,
             decision,
@@ -229,8 +214,10 @@ mod tests {
     #[test]
     fn template_permissions_all_patterns() {
         let mut tp = TemplatePermissions::default();
-        tp.allow.push(parse_pattern("Bash(git:*)", Decision::Allow).unwrap());
-        tp.deny.push(parse_pattern("Edit(**/.env)", Decision::Deny).unwrap());
+        tp.allow
+            .push(parse_pattern("Bash(git:*)", Decision::Allow).unwrap());
+        tp.deny
+            .push(parse_pattern("Edit(**/.env)", Decision::Deny).unwrap());
         assert_eq!(tp.all_patterns().count(), 2);
         assert!(tp.has_any_deny());
     }

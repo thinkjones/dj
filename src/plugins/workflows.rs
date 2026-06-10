@@ -24,7 +24,9 @@ pub fn parse(path: &Path) -> Result<HashMap<String, Workflow>> {
             cur_name = Some(name.clone());
             cur_scope = None;
             out.entry(name.clone()).or_insert_with(|| Workflow {
-                name, user: vec![], folder: vec![],
+                name,
+                user: vec![],
+                folder: vec![],
             });
             continue;
         }
@@ -78,14 +80,22 @@ mod tests {
     fn parses_scoped_steps_with_args() {
         let ws = parse_str("# Workflows\n## dev-setup\n### user\n- apm core\n- claude\n### folder\n- permissions\n- claude\n").unwrap();
         let dev = &ws["dev-setup"];
-        assert_eq!(dev.user[0], Step { name: "apm".into(), args: vec!["core".into()] });
+        assert_eq!(
+            dev.user[0],
+            Step {
+                name: "apm".into(),
+                args: vec!["core".into()]
+            }
+        );
         assert_eq!(dev.user[1].name, "claude");
         assert_eq!(dev.folder[0].name, "permissions");
     }
 
     #[test]
     fn missing_file_is_empty() {
-        assert!(parse(Path::new("/no/such/workflows.md")).unwrap().is_empty());
+        assert!(parse(Path::new("/no/such/workflows.md"))
+            .unwrap()
+            .is_empty());
     }
 
     #[test]

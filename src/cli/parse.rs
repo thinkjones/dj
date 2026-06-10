@@ -66,7 +66,13 @@ pub fn parse(tokens: &[String]) -> Result<Invocation> {
         bail!("'{} run' requires a scope: add --user or --folder", name);
     }
 
-    Ok(Invocation { name, verb, scope, args, dry_run })
+    Ok(Invocation {
+        name,
+        verb,
+        scope,
+        args,
+        dry_run,
+    })
 }
 
 #[cfg(test)]

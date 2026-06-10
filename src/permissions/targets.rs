@@ -1,5 +1,5 @@
-use std::path::{Path, PathBuf};
 use dirs::home_dir;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TargetId {
@@ -154,10 +154,7 @@ pub fn global_destination(id: TargetId) -> Option<PathBuf> {
             .join(".gemini")
             .join("antigravity-cli")
             .join("settings.json"),
-        TargetId::OpenCode => home
-            .join(".config")
-            .join("opencode")
-            .join("opencode.json"),
+        TargetId::OpenCode => home.join(".config").join("opencode").join("opencode.json"),
         TargetId::Codex => home.join(".codex").join("config.toml"),
         TargetId::KimiCode => home.join(".kimi").join("config.toml"),
     })
@@ -187,11 +184,7 @@ fn antigravity_global_settings_path() -> Option<PathBuf> {
         PathBuf::from(std::env::var("APPDATA").unwrap_or_default())
             .join("Antigravity/User/settings.json"),
     );
-    #[cfg(not(any(
-        target_os = "macos",
-        target_os = "linux",
-        target_os = "windows"
-    )))]
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
     return Some(home.join(".config/Antigravity/User/settings.json"));
 }
 

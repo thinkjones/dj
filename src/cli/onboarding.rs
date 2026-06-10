@@ -2,8 +2,8 @@ use anyhow::{bail, Result};
 use std::io::{self, Write};
 use std::path::Path;
 
+use crate::commands::catalog::{run as catalog_run, CatalogAction};
 use crate::config::{catalog_root, Config};
-use crate::commands::catalog::{CatalogAction, run as catalog_run};
 
 pub fn ensure_catalog(cfg: &Config) -> Result<()> {
     let root = catalog_root(cfg);
@@ -47,7 +47,13 @@ pub fn ensure_catalog(cfg: &Config) -> Result<()> {
             if repo.is_empty() {
                 bail!("repo cannot be empty");
             }
-            catalog_run(cfg, CatalogAction::Fetch { repo: repo.to_string(), branch: "main".to_string() })
+            catalog_run(
+                cfg,
+                CatalogAction::Fetch {
+                    repo: repo.to_string(),
+                    branch: "main".to_string(),
+                },
+            )
         }
         "3" => {
             print!("Local folder path: ");

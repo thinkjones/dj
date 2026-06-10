@@ -57,7 +57,10 @@ fn extract_first_code_block(markdown: &str) -> String {
     let mut buf = String::new();
     for event in Parser::new(markdown) {
         match event {
-            Event::Start(Tag::CodeBlock(_)) => { in_code = true; buf.clear(); }
+            Event::Start(Tag::CodeBlock(_)) => {
+                in_code = true;
+                buf.clear();
+            }
             Event::End(TagEnd::CodeBlock) if in_code => break,
             Event::Text(t) if in_code => buf.push_str(&t),
             _ => {}

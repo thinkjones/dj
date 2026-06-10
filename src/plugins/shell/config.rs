@@ -17,14 +17,22 @@ pub fn parse(path: &Path) -> Result<Vec<ShellFunction>> {
 
     for event in Parser::new(&content) {
         match event {
-            Event::Start(Tag::Heading { level: HeadingLevel::H1, .. }) => {
-                capture = true; text_buf.clear(); desc_buf.clear();
+            Event::Start(Tag::Heading {
+                level: HeadingLevel::H1,
+                ..
+            }) => {
+                capture = true;
+                text_buf.clear();
+                desc_buf.clear();
             }
             Event::End(TagEnd::Heading(HeadingLevel::H1)) => {
                 capture = false;
                 current_name = Some(text_buf.trim().to_string());
             }
-            Event::Start(Tag::CodeBlock(_)) => { in_code = true; code_buf.clear(); }
+            Event::Start(Tag::CodeBlock(_)) => {
+                in_code = true;
+                code_buf.clear();
+            }
             Event::End(TagEnd::CodeBlock) => {
                 in_code = false;
                 if let Some(name) = current_name.take() {

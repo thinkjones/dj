@@ -20,10 +20,19 @@ pub fn dispatch(cfg: &Config, rt: &Runtime, inv: &Invocation, yes: bool) -> Resu
                 bail!(
                     "'{}' is both a plugin and a workflow. Disambiguate: \
                      `dj plugin:{} run …` or `dj workflow:{} run …`.",
-                    inv.name, inv.name, inv.name
+                    inv.name,
+                    inv.name,
+                    inv.name
                 );
             }
-            println!("{}", format!("⚠ '{}' is both a plugin and a workflow — showing both.", inv.name).yellow());
+            println!(
+                "{}",
+                format!(
+                    "⚠ '{}' is both a plugin and a workflow — showing both.",
+                    inv.name
+                )
+                .yellow()
+            );
             run_plugin_verb(cfg, rt, inv, yes)?;
             run_workflow_verb(cfg, rt, inv, yes)
         }
@@ -92,16 +101,27 @@ fn run_workflow_verb(cfg: &Config, rt: &Runtime, inv: &Invocation, yes: bool) ->
             if inv.dry_run {
                 println!(
                     "{}",
-                    format!("dry-run: {} ({} scope) would run:", inv.name, scope_label(scope.kind())).cyan()
+                    format!(
+                        "dry-run: {} ({} scope) would run:",
+                        inv.name,
+                        scope_label(scope.kind())
+                    )
+                    .cyan()
                 );
                 for c in &calls {
-                    println!("  dj {} {} {}", c.plugin, c.args.join(" "), scope_flag(&scope));
+                    println!(
+                        "  dj {} {} {}",
+                        c.plugin,
+                        c.args.join(" "),
+                        scope_flag(&scope)
+                    );
                 }
                 return Ok(());
             }
             for c in calls {
-                let plugin = rt.plugin(&c.plugin)
-                    .ok_or_else(|| anyhow::anyhow!("workflow step '{}' is not a plugin", c.plugin))?;
+                let plugin = rt.plugin(&c.plugin).ok_or_else(|| {
+                    anyhow::anyhow!("workflow step '{}' is not a plugin", c.plugin)
+                })?;
                 if !plugin.manifest().scopes.contains(&scope.kind()) {
                     bail!(
                         "workflow '{}' step '{}' does not support {} scope",

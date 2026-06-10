@@ -17,7 +17,10 @@ pub fn parse(path: &Path) -> Result<Vec<CustomInstall>> {
 
     for event in Parser::new(&content) {
         match event {
-            Event::Start(Tag::Heading { level: HeadingLevel::H1, .. }) => {
+            Event::Start(Tag::Heading {
+                level: HeadingLevel::H1,
+                ..
+            }) => {
                 capture = true;
                 text_buf.clear();
                 desc_buf.clear();

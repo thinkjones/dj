@@ -15,7 +15,11 @@ pub fn run(cfg: &Config, name: &str, scope: &str, path: Option<&str>, yes: bool)
     let stack_dir = root.join(name);
 
     if !stack_dir.exists() {
-        bail!("ai stack '{}' not found in catalog ({})", name, stack_dir.display());
+        bail!(
+            "ai stack '{}' not found in catalog ({})",
+            name,
+            stack_dir.display()
+        );
     }
 
     // Dispatch: claude settings
@@ -31,12 +35,22 @@ pub fn run(cfg: &Config, name: &str, scope: &str, path: Option<&str>, yes: bool)
     Ok(())
 }
 
-pub fn run_apm(cfg: &Config, stack: &str, scope: &str, path: Option<&str>, yes: bool) -> Result<()> {
+pub fn run_apm(
+    cfg: &Config,
+    stack: &str,
+    scope: &str,
+    path: Option<&str>,
+    yes: bool,
+) -> Result<()> {
     let root = catalog_root(cfg);
     let stack_dir = root.join("apm").join(stack);
 
     if !stack_dir.exists() {
-        bail!("ai apm stack '{}' not found in catalog ({})", stack, stack_dir.display());
+        bail!(
+            "ai apm stack '{}' not found in catalog ({})",
+            stack,
+            stack_dir.display()
+        );
     }
 
     if let Some(apm_stack) = parse_apm_stack(stack, &stack_dir)? {
@@ -46,7 +60,12 @@ pub fn run_apm(cfg: &Config, stack: &str, scope: &str, path: Option<&str>, yes: 
     Ok(())
 }
 
-fn apply_claude_settings(stack_dir: &Path, scope: &str, path: Option<&str>, yes: bool) -> Result<()> {
+fn apply_claude_settings(
+    stack_dir: &Path,
+    scope: &str,
+    path: Option<&str>,
+    yes: bool,
+) -> Result<()> {
     let md_file = match scope {
         "user" => stack_dir.join("user.md"),
         _ => stack_dir.join("project.md"),
@@ -153,7 +172,13 @@ pub fn run_setup_project(cfg: &Config, path: Option<&str>, yes: bool) -> Result<
     Ok(())
 }
 
-fn apply_apm(apm_yml: &str, stack_dir: &Path, scope: &str, path: Option<&str>, yes: bool) -> Result<()> {
+fn apply_apm(
+    apm_yml: &str,
+    stack_dir: &Path,
+    scope: &str,
+    path: Option<&str>,
+    yes: bool,
+) -> Result<()> {
     if !yes {
         println!("APM manifest:\n{}", apm_yml.cyan());
         print!("Run apm install? [y/N] ");
@@ -183,7 +208,10 @@ fn apply_apm(apm_yml: &str, stack_dir: &Path, scope: &str, path: Option<&str>, y
         if !stderr.is_empty() {
             eprint!("{}", stderr);
         }
-        if !output.status.success() || stdout.contains("Install interrupted") || stdout.contains("failed validation") {
+        if !output.status.success()
+            || stdout.contains("Install interrupted")
+            || stdout.contains("failed validation")
+        {
             bail!("apm install failed");
         }
     } else {
@@ -196,11 +224,19 @@ fn apply_apm(apm_yml: &str, stack_dir: &Path, scope: &str, path: Option<&str>, y
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
         let mut cmd = Command::new("apm");
-        cmd.arg("install").arg(&abs_stack_dir).arg("-t").arg("claude");
+        cmd.arg("install")
+            .arg(&abs_stack_dir)
+            .arg("-t")
+            .arg("claude");
         cmd.current_dir(&tmp_dir);
 
         let args: Vec<&str> = cmd.get_args().map(|a| a.to_str().unwrap_or("")).collect();
-        println!("  {} apm {} (in {})", "→".cyan(), args.join(" "), tmp_dir.display());
+        println!(
+            "  {} apm {} (in {})",
+            "→".cyan(),
+            args.join(" "),
+            tmp_dir.display()
+        );
 
         let output = cmd.output()?;
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -209,7 +245,10 @@ fn apply_apm(apm_yml: &str, stack_dir: &Path, scope: &str, path: Option<&str>, y
         if !stderr.is_empty() {
             eprint!("{}", stderr);
         }
-        if !output.status.success() || stdout.contains("Install interrupted") || stdout.contains("failed validation") {
+        if !output.status.success()
+            || stdout.contains("Install interrupted")
+            || stdout.contains("failed validation")
+        {
             bail!("apm install failed");
         }
 

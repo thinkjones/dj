@@ -1,12 +1,16 @@
+use super::{TranslationFile, TranslationResult};
+use crate::permissions::{Decision, PatternCategory, TemplatePermissions};
 use anyhow::Result;
 use std::path::Path;
-use crate::permissions::{PatternCategory, Decision, TemplatePermissions};
-use super::{TranslationFile, TranslationResult};
 
-pub fn translate(perms: &TemplatePermissions, scope_root: &Path, is_global: bool) -> Result<TranslationResult> {
+pub fn translate(
+    perms: &TemplatePermissions,
+    scope_root: &Path,
+    is_global: bool,
+) -> Result<TranslationResult> {
     let settings_path = scope_root.join("settings.json");
-    let ignore_path   = scope_root.join(".geminiignore");
-    let policy_path   = scope_root.join("policies").join("00-from-template.yaml");
+    let ignore_path = scope_root.join(".geminiignore");
+    let policy_path = scope_root.join("policies").join("00-from-template.yaml");
 
     // --- settings.json ---
     let mut settings: serde_json::Value = if settings_path.exists() {
@@ -19,7 +23,10 @@ pub fn translate(perms: &TemplatePermissions, scope_root: &Path, is_global: bool
     let root = settings.as_object_mut().unwrap();
     // Always set tools.yolo: false
     let tools = root.entry("tools").or_insert(serde_json::json!({}));
-    tools.as_object_mut().unwrap().insert("yolo".to_string(), serde_json::json!(false));
+    tools
+        .as_object_mut()
+        .unwrap()
+        .insert("yolo".to_string(), serde_json::json!(false));
 
     // Build excludeTools
     let mut exclude_tools: Vec<String> = vec![];
@@ -37,7 +44,8 @@ pub fn translate(perms: &TemplatePermissions, scope_root: &Path, is_global: bool
     }
 
     // Preserve non-owned keys; only update excludeTools
-    let exclude_arr: serde_json::Value = exclude_tools.iter()
+    let exclude_arr: serde_json::Value = exclude_tools
+        .iter()
         .map(|s| serde_json::Value::String(s.clone()))
         .collect::<Vec<_>>()
         .into();
@@ -65,7 +73,10 @@ pub fn translate(perms: &TemplatePermissions, scope_root: &Path, is_global: bool
     policy_rules.push("# >>> dj ai permissions (managed) >>>".to_string());
     policy_rules.push("rules:".to_string());
     for p in perms.allow.iter().chain(perms.deny.iter()) {
-        let decision_str = match p.decision { Decision::Allow => "allow", Decision::Deny => "deny" };
+        let decision_str = match p.decision {
+            Decision::Allow => "allow",
+            Decision::Deny => "deny",
+        };
         match p.category {
             PatternCategory::Shell => {
                 let cmd = p.shell_base_command().unwrap_or_default();
@@ -105,11 +116,20 @@ pub fn translate(perms: &TemplatePermissions, scope_root: &Path, is_global: bool
     let policy_content = policy_rules.join("\n") + "\n";
 
     let mut files = vec![
-        TranslationFile { path: settings_path, content: settings_content },
-        TranslationFile { path: policy_path, content: policy_content },
+        TranslationFile {
+            path: settings_path,
+            content: settings_content,
+        },
+        TranslationFile {
+            path: policy_path,
+            content: policy_content,
+        },
     ];
     if !ignore_content.is_empty() {
-        files.push(TranslationFile { path: ignore_path, content: ignore_content });
+        files.push(TranslationFile {
+            path: ignore_path,
+            content: ignore_content,
+        });
     }
 
     if !is_global {
@@ -134,10 +154,14 @@ mod tests {
             allow: vec![],
             deny: vec![],
         };
-        tp.allow.push(parse_pattern("Bash(git:*)", Decision::Allow).unwrap());
-        tp.allow.push(parse_pattern("WebSearch", Decision::Allow).unwrap());
-        tp.deny.push(parse_pattern("Bash(rm -rf:*)", Decision::Deny).unwrap());
-        tp.deny.push(parse_pattern("Edit(**/.env)", Decision::Deny).unwrap());
+        tp.allow
+            .push(parse_pattern("Bash(git:*)", Decision::Allow).unwrap());
+        tp.allow
+            .push(parse_pattern("WebSearch", Decision::Allow).unwrap());
+        tp.deny
+            .push(parse_pattern("Bash(rm -rf:*)", Decision::Deny).unwrap());
+        tp.deny
+            .push(parse_pattern("Edit(**/.env)", Decision::Deny).unwrap());
         tp
     }
 
@@ -149,7 +173,11 @@ mod tests {
         // At least settings and policy files
         assert!(result.files.len() >= 2);
         // settings.json present
-        let settings_file = result.files.iter().find(|f| f.path.ends_with("settings.json")).unwrap();
+        let settings_file = result
+            .files
+            .iter()
+            .find(|f| f.path.ends_with("settings.json"))
+            .unwrap();
         let v: serde_json::Value = serde_json::from_str(&settings_file.content).unwrap();
         assert_eq!(v["tools"]["yolo"], false);
     }

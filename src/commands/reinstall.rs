@@ -8,7 +8,12 @@ use std::process::Command;
 use crate::config::Config;
 
 pub fn run(_cfg: &Config, yes: bool) -> Result<()> {
-    println!("{}", "WARNING: dj reinstall will replace your dj installation.".red().bold());
+    println!(
+        "{}",
+        "WARNING: dj reinstall will replace your dj installation."
+            .red()
+            .bold()
+    );
     println!("This will:");
     println!("  Back up ~/.local/bin/dj → ~/.local/bin/dj.old");
     println!("  Back up ~/.config/dj/ → ~/.config/dj.old/");
@@ -32,7 +37,9 @@ pub fn run(_cfg: &Config, yes: bool) -> Result<()> {
 
     // Pre-flight: check bootstrap URL is reachable
     let bootstrap_url = "https://raw.githubusercontent.com/thinkjones/dj/main/bootstrap.sh";
-    let check = Command::new("curl").args(["-fsSL", "-I", bootstrap_url]).output()?;
+    let check = Command::new("curl")
+        .args(["-fsSL", "-I", bootstrap_url])
+        .output()?;
     if !check.status.success() {
         bail!("bootstrap URL is not reachable — check your connection and try again");
     }
@@ -52,7 +59,11 @@ pub fn run(_cfg: &Config, yes: bool) -> Result<()> {
             fs::remove_dir_all(&config_old)?;
         }
         fs::rename(&config_dir, &config_old)?;
-        println!("  Backed up {} → {}", config_dir.display(), config_old.display());
+        println!(
+            "  Backed up {} → {}",
+            config_dir.display(),
+            config_old.display()
+        );
     }
 
     // Download and run bootstrap
@@ -75,7 +86,10 @@ pub fn run(_cfg: &Config, yes: bool) -> Result<()> {
         }
         _ => {
             // Rollback
-            println!("{}", "✗ Reinstall failed — restoring previous installation...".red());
+            println!(
+                "{}",
+                "✗ Reinstall failed — restoring previous installation...".red()
+            );
             if bin_old.exists() {
                 if bin.exists() {
                     fs::remove_file(&bin)?;

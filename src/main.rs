@@ -15,7 +15,12 @@ use owo_colors::OwoColorize;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "dj", version, about = "macOS developer workstation manager", allow_external_subcommands = true)]
+#[command(
+    name = "dj",
+    version,
+    about = "macOS developer workstation manager",
+    allow_external_subcommands = true
+)]
 pub struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -32,9 +37,15 @@ enum Commands {
     /// Regenerate all artifacts from catalog
     Rebuild,
     /// DESTRUCTIVE: wipe and reinstall dj
-    Reinstall { #[arg(long, short = 'y')] yes: bool },
+    Reinstall {
+        #[arg(long, short = 'y')]
+        yes: bool,
+    },
     /// Uninstall dj binary
-    Uninstall { #[arg(long, short = 'y')] yes: bool },
+    Uninstall {
+        #[arg(long, short = 'y')]
+        yes: bool,
+    },
     /// Generate/install shell completions
     Completions {
         #[command(subcommand)]
@@ -97,10 +108,18 @@ fn main() -> anyhow::Result<()> {
         Some(Commands::Completions { cmd }) => {
             let mut cli_cmd = Cli::command();
             match cmd {
-                CompletionsCmd::Bash => commands::completions::print_completions(Shell::Bash, &mut cli_cmd),
-                CompletionsCmd::Fish => commands::completions::print_completions(Shell::Fish, &mut cli_cmd),
-                CompletionsCmd::Zsh => commands::completions::print_completions(Shell::Zsh, &mut cli_cmd),
-                CompletionsCmd::Install { yes } => commands::completions::install(yes, &mut cli_cmd)?,
+                CompletionsCmd::Bash => {
+                    commands::completions::print_completions(Shell::Bash, &mut cli_cmd)
+                }
+                CompletionsCmd::Fish => {
+                    commands::completions::print_completions(Shell::Fish, &mut cli_cmd)
+                }
+                CompletionsCmd::Zsh => {
+                    commands::completions::print_completions(Shell::Zsh, &mut cli_cmd)
+                }
+                CompletionsCmd::Install { yes } => {
+                    commands::completions::install(yes, &mut cli_cmd)?
+                }
             }
         }
         Some(Commands::Doctor) => {
@@ -160,9 +179,17 @@ fn main() -> anyhow::Result<()> {
 
 fn print_plugin_line(cfg: &Config, m: &plugins::Manifest) {
     let root = config::catalog_root(cfg);
-    let config_file = root.join(&m.name).join(m.config.get(&ScopeKind::User).unwrap_or(&"config.md".to_string()));
+    let config_file = root.join(&m.name).join(
+        m.config
+            .get(&ScopeKind::User)
+            .unwrap_or(&"config.md".to_string()),
+    );
     let has_config = config_file.exists();
-    let status = if has_config { "●".green().to_string() } else { "○".dimmed().to_string() };
+    let status = if has_config {
+        "●".green().to_string()
+    } else {
+        "○".dimmed().to_string()
+    };
     println!("  {:<12} {} {}", m.name, status, m.summary);
 }
 
@@ -187,15 +214,33 @@ fn print_custom_help(rt: &plugins::runtime::Runtime) {
     }
 
     println!("\n{}", "Tool Management".bold());
-    println!("  {:<12} {}", "rebuild", "Regenerate all artifacts from catalog");
-    println!("  {:<12} {}", "reinstall", "DESTRUCTIVE: wipe and reinstall dj");
+    println!(
+        "  {:<12} {}",
+        "rebuild", "Regenerate all artifacts from catalog"
+    );
+    println!(
+        "  {:<12} {}",
+        "reinstall", "DESTRUCTIVE: wipe and reinstall dj"
+    );
     println!("  {:<12} {}", "uninstall", "Uninstall dj binary");
-    println!("  {:<12} {}", "completions", "Generate/install shell completions");
-    println!("  {:<12} {}", "plugins", "Show all installed plugins and catalog actions");
+    println!(
+        "  {:<12} {}",
+        "completions", "Generate/install shell completions"
+    );
+    println!(
+        "  {:<12} {}",
+        "plugins", "Show all installed plugins and catalog actions"
+    );
     println!("  {:<12} {}", "doctor", "Health check across all plugins");
     println!("  {:<12} {}", "version", "Show dj + plugin versions");
-    println!("  {:<12} {}", "onboard", "Set up your catalog for the first time");
-    println!("  {:<12} {}", "help", "Print this message or the help of the given subcommand(s)");
+    println!(
+        "  {:<12} {}",
+        "onboard", "Set up your catalog for the first time"
+    );
+    println!(
+        "  {:<12} {}",
+        "help", "Print this message or the help of the given subcommand(s)"
+    );
 
     println!("\nOptions:");
     println!("  -h, --help     Print help");
@@ -250,7 +295,9 @@ fn check_catalog_versions(cfg: &Config, rt: &plugins::runtime::Runtime) {
         }
         println!(
             "{}",
-            "  Update dj or adjust dj-catalog.toml to resolve.".yellow().dimmed()
+            "  Update dj or adjust dj-catalog.toml to resolve."
+                .yellow()
+                .dimmed()
         );
     }
 }

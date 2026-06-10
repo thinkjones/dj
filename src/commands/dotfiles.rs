@@ -31,7 +31,9 @@ pub fn run(cfg: &Config, dry_run: bool, yes: bool) -> Result<()> {
 
     // Show diff first
     println!("{}", "Calculating diff...".cyan());
-    let diff = Command::new("chezmoi").args(["diff", &source_arg]).output()?;
+    let diff = Command::new("chezmoi")
+        .args(["diff", &source_arg])
+        .output()?;
     let diff_output = String::from_utf8_lossy(&diff.stdout);
 
     if diff_output.trim().is_empty() {

@@ -39,7 +39,10 @@ pub fn parse_package_managers(path: &Path) -> Result<Vec<PackageManager>> {
 
     for event in Parser::new(&content) {
         match event {
-            Event::Start(Tag::Heading { level: HeadingLevel::H1, .. }) => {
+            Event::Start(Tag::Heading {
+                level: HeadingLevel::H1,
+                ..
+            }) => {
                 capture_name = true;
                 name_buf.clear();
                 desc_buf.clear();

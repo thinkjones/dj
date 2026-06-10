@@ -94,7 +94,11 @@ impl Manifest {
             "folder" => Ok(ScopeKind::Folder),
             other => bail!("unknown scope '{other}' in plugin '{}'", raw.name),
         };
-        let scopes = raw.scopes.iter().map(|s| scope_of(s)).collect::<Result<Vec<_>>>()?;
+        let scopes = raw
+            .scopes
+            .iter()
+            .map(|s| scope_of(s))
+            .collect::<Result<Vec<_>>>()?;
         let cadence = match raw.cadence.as_str() {
             "one-time" => Cadence::OneTime,
             "regular" => Cadence::Regular,
@@ -104,13 +108,20 @@ impl Manifest {
         for (k, v) in raw.config {
             let kind = scope_of(&k)?;
             if !scopes.contains(&kind) {
-                bail!("plugin '{}' declares config for unsupported scope '{k}'", raw.name);
+                bail!(
+                    "plugin '{}' declares config for unsupported scope '{k}'",
+                    raw.name
+                );
             }
             config.insert(kind, v);
         }
         Ok(Manifest {
-            name: raw.name, summary: raw.summary, version: raw.version,
-            scopes, cadence, config,
+            name: raw.name,
+            summary: raw.summary,
+            version: raw.version,
+            scopes,
+            cadence,
+            config,
         })
     }
 }
@@ -122,21 +133,37 @@ mod tests {
     // A no-op plugin proves the trait is object-safe and the types compose.
     struct Dummy(Manifest);
     impl Plugin for Dummy {
-        fn manifest(&self) -> &Manifest { &self.0 }
-        fn plan(&self, _: &PluginContext) -> Result<Vec<PlanStep>> { Ok(vec![]) }
-        fn run(&self, _: &PluginContext) -> Result<()> { Ok(()) }
-        fn doctor(&self, _: &PluginContext) -> Result<Health> {
-            Ok(Health { status: HealthStatus::Ok, details: vec![] })
+        fn manifest(&self) -> &Manifest {
+            &self.0
         }
-        fn list(&self, _: &PluginContext) -> Result<Vec<String>> { Ok(vec![]) }
-        fn example_config(&self, _: ScopeKind) -> Option<String> { None }
+        fn plan(&self, _: &PluginContext) -> Result<Vec<PlanStep>> {
+            Ok(vec![])
+        }
+        fn run(&self, _: &PluginContext) -> Result<()> {
+            Ok(())
+        }
+        fn doctor(&self, _: &PluginContext) -> Result<Health> {
+            Ok(Health {
+                status: HealthStatus::Ok,
+                details: vec![],
+            })
+        }
+        fn list(&self, _: &PluginContext) -> Result<Vec<String>> {
+            Ok(vec![])
+        }
+        fn example_config(&self, _: ScopeKind) -> Option<String> {
+            None
+        }
     }
 
     #[test]
     fn trait_is_object_safe() {
         let m = Manifest {
-            name: "x".into(), summary: "t".into(), version: "0.1.0".into(),
-            scopes: vec![ScopeKind::User], cadence: Cadence::Regular,
+            name: "x".into(),
+            summary: "t".into(),
+            version: "0.1.0".into(),
+            scopes: vec![ScopeKind::User],
+            cadence: Cadence::Regular,
             config: BTreeMap::new(),
         };
         let p: Box<dyn Plugin> = Box::new(Dummy(m));
@@ -145,7 +172,8 @@ mod tests {
 
     #[test]
     fn parses_multi_scope_manifest() {
-        let m = Manifest::from_toml(r#"
+        let m = Manifest::from_toml(
+            r#"
 name = "claude"
 summary = "Claude config"
 version = "0.1.0"
@@ -154,7 +182,9 @@ cadence = "regular"
 [config]
 user = "user.md"
 folder = "project.md"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
         assert_eq!(m.name, "claude");
         assert_eq!(m.scopes, vec![ScopeKind::User, ScopeKind::Folder]);
         assert_eq!(m.cadence, Cadence::Regular);
@@ -163,7 +193,8 @@ folder = "project.md"
 
     #[test]
     fn rejects_config_for_undeclared_scope() {
-        let err = Manifest::from_toml(r#"
+        let err = Manifest::from_toml(
+            r#"
 name = "brew"
 summary = "x"
 version = "0.1.0"
@@ -171,7 +202,9 @@ scopes = ["user"]
 cadence = "regular"
 [config]
 folder = "nope.md"
-"#).unwrap_err();
+"#,
+        )
+        .unwrap_err();
         assert!(err.to_string().contains("unsupported scope"));
     }
 
@@ -179,6 +212,7 @@ folder = "nope.md"
     fn rejects_unknown_cadence() {
         assert!(Manifest::from_toml(
             "name='x'\nsummary='x'\nversion='0'\nscopes=['user']\ncadence='weekly'\n"
-        ).is_err());
+        )
+        .is_err());
     }
 }

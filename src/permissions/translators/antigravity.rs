@@ -1,10 +1,14 @@
-use anyhow::Result;
-use std::path::Path;
-use serde_json::{json, Value};
-use crate::permissions::{PatternCategory, TemplatePermissions};
 use super::{TranslationFile, TranslationResult};
+use crate::permissions::{PatternCategory, TemplatePermissions};
+use anyhow::Result;
+use serde_json::{json, Value};
+use std::path::Path;
 
-pub fn translate(perms: &TemplatePermissions, dest: &Path, is_cli: bool) -> Result<TranslationResult> {
+pub fn translate(
+    perms: &TemplatePermissions,
+    dest: &Path,
+    is_cli: bool,
+) -> Result<TranslationResult> {
     // Read existing
     let mut root: Value = if dest.exists() {
         let content = std::fs::read_to_string(dest)?;
@@ -22,7 +26,8 @@ pub fn translate(perms: &TemplatePermissions, dest: &Path, is_cli: bool) -> Resu
             if let Some(cmd) = p.shell_base_command() {
                 if p.is_shell_embedded_wildcard() {
                     warnings.push(format!(
-                        "wildcard pattern {} translated to base-command allow; review manually", p.raw
+                        "wildcard pattern {} translated to base-command allow; review manually",
+                        p.raw
                     ));
                 }
                 allow_cmds.push(json!(format!("command({})", cmd)));
@@ -41,7 +46,8 @@ pub fn translate(perms: &TemplatePermissions, dest: &Path, is_cli: bool) -> Resu
             if let Some(cmd) = p.shell_base_command() {
                 if p.is_shell_embedded_wildcard() {
                     warnings.push(format!(
-                        "wildcard pattern {} translated to base-command deny; review manually", p.raw
+                        "wildcard pattern {} translated to base-command deny; review manually",
+                        p.raw
                     ));
                 }
                 deny_cmds.push(json!(format!("command({})", cmd)));
@@ -84,7 +90,10 @@ pub fn translate(perms: &TemplatePermissions, dest: &Path, is_cli: bool) -> Resu
 
     let content = serde_json::to_string_pretty(&root)? + "\n";
     Ok(TranslationResult {
-        files: vec![TranslationFile { path: dest.to_path_buf(), content }],
+        files: vec![TranslationFile {
+            path: dest.to_path_buf(),
+            content,
+        }],
         warnings,
     })
 }
@@ -102,10 +111,14 @@ mod tests {
             allow: vec![],
             deny: vec![],
         };
-        tp.allow.push(parse_pattern("Bash(git:*)", Decision::Allow).unwrap());
-        tp.allow.push(parse_pattern("WebSearch", Decision::Allow).unwrap());
-        tp.deny.push(parse_pattern("Bash(rm -rf:*)", Decision::Deny).unwrap());
-        tp.deny.push(parse_pattern("Edit(**/.env)", Decision::Deny).unwrap());
+        tp.allow
+            .push(parse_pattern("Bash(git:*)", Decision::Allow).unwrap());
+        tp.allow
+            .push(parse_pattern("WebSearch", Decision::Allow).unwrap());
+        tp.deny
+            .push(parse_pattern("Bash(rm -rf:*)", Decision::Deny).unwrap());
+        tp.deny
+            .push(parse_pattern("Edit(**/.env)", Decision::Deny).unwrap());
         tp
     }
 
@@ -137,6 +150,9 @@ mod tests {
         let dest = dir.path().join("settings.json");
         let perms = sample_perms();
         let result = translate(&perms, &dest, false).unwrap();
-        assert!(result.warnings.iter().any(|w| w.contains("Browser URL Allowlist")));
+        assert!(result
+            .warnings
+            .iter()
+            .any(|w| w.contains("Browser URL Allowlist")));
     }
 }

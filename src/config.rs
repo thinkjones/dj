@@ -72,16 +72,22 @@ mod tests {
     #[test]
     fn config_parses_with_catalog_section() {
         let mut f = NamedTempFile::new().unwrap();
-        f.write_all(br#"
+        f.write_all(
+            br#"
 catalog_root = "/tmp/catalog"
 default_agent_stack = "core"
 
 [catalog]
 source = "example"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
         let content = std::fs::read_to_string(f.path()).unwrap();
         let cfg: Config = toml::from_str(&content).unwrap();
         assert_eq!(cfg.catalog_root, PathBuf::from("/tmp/catalog"));
-        assert_eq!(cfg.catalog.as_ref().unwrap().source, Some("example".to_string()));
+        assert_eq!(
+            cfg.catalog.as_ref().unwrap().source,
+            Some("example".to_string())
+        );
     }
 }

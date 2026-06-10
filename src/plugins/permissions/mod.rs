@@ -72,9 +72,6 @@ impl Plugin for Permissions {
             .collect())
     }
 
-    fn example_config(&self, _: ScopeKind) -> Option<String> {
-        Some(include_str!("example.md").to_string())
-    }
 }
 
 #[cfg(test)]

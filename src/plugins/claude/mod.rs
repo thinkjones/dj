@@ -1,4 +1,4 @@
-use crate::cli::scope::{Scope, ScopeKind};
+use crate::cli::scope::Scope;
 use crate::commands;
 use crate::config::catalog_root;
 use crate::plugins::{Health, HealthStatus, Manifest, PlanStep, Plugin, PluginContext};
@@ -95,14 +95,6 @@ impl Plugin for Claude {
         Ok(vec![ctx.cfg.default_agent_stack.clone()])
     }
 
-    fn example_config(&self, scope: ScopeKind) -> Option<String> {
-        match scope {
-            ScopeKind::User => Some(include_str!("example.md").to_string()),
-            ScopeKind::Folder => {
-                Some("# Claude Project Settings\nFolder-scoped Claude configuration.\n".to_string())
-            }
-        }
-    }
 }
 
 #[cfg(target_os = "macos")]
@@ -122,6 +114,7 @@ fn claude_desktop_settings_path() -> std::path::PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::scope::ScopeKind;
     #[test]
     fn manifest_loads_and_has_both_scopes() {
         let p = Claude::new();

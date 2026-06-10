@@ -1,4 +1,4 @@
-use crate::cli::scope::ScopeKind;
+
 use crate::commands;
 use crate::config::{catalog_root, Config};
 use crate::plugins::{Health, HealthStatus, Manifest, PlanStep, Plugin, PluginContext};
@@ -81,14 +81,12 @@ impl Plugin for Apm {
         Ok(Self::stacks(ctx.cfg))
     }
 
-    fn example_config(&self, _: ScopeKind) -> Option<String> {
-        Some(include_str!("example.md").to_string())
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::scope::ScopeKind;
     #[test]
     fn manifest_loads_and_has_both_scopes() {
         let p = Apm::new();

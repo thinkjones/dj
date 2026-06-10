@@ -4,72 +4,19 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::config::{catalog_root, Config};
-use crate::plugins::runtime::Runtime;
 
 pub enum CatalogAction {
-    Info,
     UseExample,
     UseLocal { path: PathBuf },
     Fetch { repo: String, branch: String },
-    List,
 }
 
 pub fn run(cfg: &Config, action: CatalogAction) -> Result<()> {
     match action {
-        CatalogAction::Info => cmd_info(cfg),
         CatalogAction::UseExample => cmd_use_example(cfg),
         CatalogAction::UseLocal { path } => cmd_use_local(cfg, &path),
         CatalogAction::Fetch { repo, branch } => cmd_fetch(cfg, &repo, &branch),
-        CatalogAction::List => cmd_list(cfg),
     }
-}
-
-fn cmd_info(cfg: &Config) -> Result<()> {
-    let root = catalog_root(cfg);
-    println!("Catalog root: {}", root.display());
-
-    if let Some(meta) = &cfg.catalog {
-        if let Some(src) = &meta.source {
-            println!("Source: {}", src);
-        }
-    }
-
-    if !root.exists() {
-        println!("Status: not installed");
-        return Ok(());
-    }
-
-    // Count plugin configs present
-    let plugins = [
-        "brew",
-        "runtimes",
-        "custom",
-        "symlinks",
-        "shell",
-        "apm",
-        "claude",
-        "permissions",
-    ];
-    let mut present = 0;
-    for name in &plugins {
-        if root.join(name).exists() {
-            present += 1;
-        }
-    }
-    println!("Plugins with config: {}/{}", present, plugins.len());
-
-    // Load runtime and show workflow count
-    match Runtime::load(cfg) {
-        Ok(rt) => {
-            let workflows = rt.workflows().len();
-            println!("Workflows: {}", workflows);
-        }
-        Err(_) => {
-            println!("Workflows: unable to load");
-        }
-    }
-
-    Ok(())
 }
 
 fn cmd_use_example(cfg: &Config) -> Result<()> {
@@ -174,11 +121,6 @@ fn cmd_fetch(cfg: &Config, repo: &str, branch: &str) -> Result<()> {
             bail!("failed to fetch catalog from {}. Ensure gh is authenticated or the repo is public.", repo);
         }
     }
-}
-
-fn cmd_list(cfg: &Config) -> Result<()> {
-    // Delegate to existing list command
-    crate::commands::list::run(cfg)
 }
 
 fn is_valid_catalog(path: &Path) -> bool {

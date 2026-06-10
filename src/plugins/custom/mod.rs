@@ -1,5 +1,5 @@
 use crate::catalog;
-use crate::cli::scope::ScopeKind;
+
 use crate::plugins::{Health, HealthStatus, Manifest, PlanStep, Plugin, PluginContext};
 use anyhow::Result;
 use owo_colors::OwoColorize;
@@ -92,14 +92,12 @@ impl Plugin for Custom {
         Ok(Self::entries(ctx).into_iter().map(|e| e.name).collect())
     }
 
-    fn example_config(&self, _: ScopeKind) -> Option<String> {
-        Some(include_str!("example.md").to_string())
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::scope::ScopeKind;
     #[test]
     fn manifest_loads_and_is_user_scoped() {
         let p = Custom::new();

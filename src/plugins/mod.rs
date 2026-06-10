@@ -39,7 +39,6 @@ pub struct Manifest {
 pub struct PluginContext<'a> {
     pub scope: Scope,
     pub args: Vec<String>,
-    pub config_dir: PathBuf,
     pub config_file: PathBuf,
     pub cfg: &'a Config,
     pub yes: bool,
@@ -71,7 +70,6 @@ pub trait Plugin {
     fn run(&self, ctx: &PluginContext) -> Result<()>;
     fn doctor(&self, ctx: &PluginContext) -> Result<Health>;
     fn list(&self, ctx: &PluginContext) -> Result<Vec<String>>;
-    fn example_config(&self, scope: ScopeKind) -> Option<String>;
 }
 
 #[derive(Deserialize)]
@@ -150,9 +148,6 @@ mod tests {
         }
         fn list(&self, _: &PluginContext) -> Result<Vec<String>> {
             Ok(vec![])
-        }
-        fn example_config(&self, _: ScopeKind) -> Option<String> {
-            None
         }
     }
 

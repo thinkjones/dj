@@ -83,7 +83,6 @@ impl Runtime {
         let ctx = PluginContext {
             scope: scope.clone(),
             args: args.to_vec(),
-            config_dir,
             config_file,
             cfg,
             yes,
@@ -171,9 +170,6 @@ mod tests {
         fn list(&self, _: &PluginContext) -> Result<Vec<String>> {
             Ok(vec!["entry".into()])
         }
-        fn example_config(&self, _: ScopeKind) -> Option<String> {
-            None
-        }
     }
 
     fn rt() -> Runtime {
@@ -189,7 +185,6 @@ mod tests {
         let cfg = Config {
             catalog_root: "/tmp".into(),
             default_agent_stack: "core".into(),
-            catalog: None,
         };
         let err = rt()
             .run(
@@ -209,7 +204,6 @@ mod tests {
         let cfg = Config {
             catalog_root: "/tmp".into(),
             default_agent_stack: "core".into(),
-            catalog: None,
         };
         rt().run("fake", &Scope::User, &[], true, true, &cfg)
             .unwrap();

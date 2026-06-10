@@ -4,15 +4,9 @@ use serde::Deserialize;
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct CatalogMeta {
-    pub source: Option<String>, // "example" | "github:owner/repo" | "local"
-}
-
-#[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub catalog_root: PathBuf,
     pub default_agent_stack: String,
-    pub catalog: Option<CatalogMeta>,
 }
 
 impl Config {
@@ -70,7 +64,7 @@ mod tests {
     use tempfile::NamedTempFile;
 
     #[test]
-    fn config_parses_with_catalog_section() {
+    fn config_parses_and_ignores_unknown_catalog_section() {
         let mut f = NamedTempFile::new().unwrap();
         f.write_all(
             br#"
@@ -85,9 +79,6 @@ source = "example"
         let content = std::fs::read_to_string(f.path()).unwrap();
         let cfg: Config = toml::from_str(&content).unwrap();
         assert_eq!(cfg.catalog_root, PathBuf::from("/tmp/catalog"));
-        assert_eq!(
-            cfg.catalog.as_ref().unwrap().source,
-            Some("example".to_string())
-        );
+        assert_eq!(cfg.default_agent_stack, "core");
     }
 }

@@ -6,13 +6,11 @@ mod example_catalog;
 mod permissions;
 mod plugins;
 
-use anyhow::bail;
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 use cli::scope::{Scope, ScopeKind};
 use config::Config;
 use owo_colors::OwoColorize;
-use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(
@@ -81,7 +79,6 @@ fn main() -> anyhow::Result<()> {
             .unwrap_or_default()
             .join(".config/dj/catalog"),
         default_agent_stack: "core".into(),
-        catalog: None,
     });
 
     let rt = plugins::runtime::Runtime::load(&cfg)?;
@@ -214,32 +211,29 @@ fn print_custom_help(rt: &plugins::runtime::Runtime) {
     }
 
     println!("\n{}", "Tool Management".bold());
+    println!("  {:<12} Regenerate all artifacts from catalog", "rebuild");
     println!(
-        "  {:<12} {}",
-        "rebuild", "Regenerate all artifacts from catalog"
+        "  {:<12} DESTRUCTIVE: wipe and reinstall dj",
+        "reinstall"
+    );
+    println!("  {:<12} Uninstall dj binary", "uninstall");
+    println!(
+        "  {:<12} Generate/install shell completions",
+        "completions"
     );
     println!(
-        "  {:<12} {}",
-        "reinstall", "DESTRUCTIVE: wipe and reinstall dj"
+        "  {:<12} Show all installed plugins and catalog actions",
+        "plugins"
     );
-    println!("  {:<12} {}", "uninstall", "Uninstall dj binary");
+    println!("  {:<12} Health check across all plugins", "doctor");
+    println!("  {:<12} Show dj + plugin versions", "version");
     println!(
-        "  {:<12} {}",
-        "completions", "Generate/install shell completions"
-    );
-    println!(
-        "  {:<12} {}",
-        "plugins", "Show all installed plugins and catalog actions"
-    );
-    println!("  {:<12} {}", "doctor", "Health check across all plugins");
-    println!("  {:<12} {}", "version", "Show dj + plugin versions");
-    println!(
-        "  {:<12} {}",
-        "onboard", "Set up your catalog for the first time"
+        "  {:<12} Set up your catalog for the first time",
+        "onboard"
     );
     println!(
-        "  {:<12} {}",
-        "help", "Print this message or the help of the given subcommand(s)"
+        "  {:<12} Print this message or the help of the given subcommand(s)",
+        "help"
     );
 
     println!("\nOptions:");

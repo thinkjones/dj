@@ -12,7 +12,6 @@ pub struct Step {
 /// A scope-aware workflow: a separate ordered step list per scope.
 #[derive(Debug, Clone)]
 pub struct Workflow {
-    pub name: String,
     pub user: Vec<Step>,
     pub folder: Vec<Step>,
 }
@@ -88,23 +87,21 @@ mod tests {
         }
     }
 
-    fn map(ws: Vec<Workflow>) -> HashMap<String, Workflow> {
-        ws.into_iter().map(|w| (w.name.clone(), w)).collect()
+    fn map(ws: Vec<(&str, Workflow)>) -> HashMap<String, Workflow> {
+        ws.into_iter().map(|(n, w)| (n.to_string(), w)).collect()
     }
 
     #[test]
     fn expands_nested_workflow_in_order() {
         let dev = Workflow {
-            name: "dev-setup".into(),
             user: vec![step("apm", &["core"]), step("claude", &[])],
             folder: vec![step("permissions", &[]), step("claude", &[])],
         };
         let setup = Workflow {
-            name: "setup".into(),
             user: vec![step("brew", &[]), step("dev-setup", &[])],
             folder: vec![step("dev-setup", &[])],
         };
-        let ws = map(vec![dev, setup]);
+        let ws = map(vec![("dev-setup", dev), ("setup", setup)]);
 
         let user = expand("setup", ScopeKind::User, &ws).unwrap();
         assert_eq!(
@@ -144,16 +141,14 @@ mod tests {
     #[test]
     fn detects_cycles() {
         let a = Workflow {
-            name: "a".into(),
             user: vec![step("b", &[])],
             folder: vec![],
         };
         let b = Workflow {
-            name: "b".into(),
             user: vec![step("a", &[])],
             folder: vec![],
         };
-        let ws = map(vec![a, b]);
+        let ws = map(vec![("a", a), ("b", b)]);
         let err = expand("a", ScopeKind::User, &ws).unwrap_err();
         assert!(err.to_string().contains("cycle"));
     }

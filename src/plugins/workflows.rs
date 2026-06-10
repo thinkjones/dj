@@ -24,7 +24,6 @@ pub fn parse(path: &Path) -> Result<HashMap<String, Workflow>> {
             cur_name = Some(name.clone());
             cur_scope = None;
             out.entry(name.clone()).or_insert_with(|| Workflow {
-                name,
                 user: vec![],
                 folder: vec![],
             });

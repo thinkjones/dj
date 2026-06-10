@@ -212,25 +212,16 @@ fn print_custom_help(rt: &plugins::runtime::Runtime) {
 
     println!("\n{}", "Tool Management".bold());
     println!("  {:<12} Regenerate all artifacts from catalog", "rebuild");
-    println!(
-        "  {:<12} DESTRUCTIVE: wipe and reinstall dj",
-        "reinstall"
-    );
+    println!("  {:<12} DESTRUCTIVE: wipe and reinstall dj", "reinstall");
     println!("  {:<12} Uninstall dj binary", "uninstall");
-    println!(
-        "  {:<12} Generate/install shell completions",
-        "completions"
-    );
+    println!("  {:<12} Generate/install shell completions", "completions");
     println!(
         "  {:<12} Show all installed plugins and catalog actions",
         "plugins"
     );
     println!("  {:<12} Health check across all plugins", "doctor");
     println!("  {:<12} Show dj + plugin versions", "version");
-    println!(
-        "  {:<12} Set up your catalog for the first time",
-        "onboard"
-    );
+    println!("  {:<12} Set up your catalog for the first time", "onboard");
     println!(
         "  {:<12} Print this message or the help of the given subcommand(s)",
         "help"

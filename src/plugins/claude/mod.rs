@@ -94,7 +94,6 @@ impl Plugin for Claude {
     fn list(&self, ctx: &PluginContext) -> Result<Vec<String>> {
         Ok(vec![ctx.cfg.default_agent_stack.clone()])
     }
-
 }
 
 #[cfg(target_os = "macos")]

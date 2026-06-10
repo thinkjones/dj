@@ -26,7 +26,7 @@ pub fn ensure_catalog(cfg: &Config) -> Result<()> {
     }
     println!("How would you like to set up your catalog?\n");
     println!("  [1] Install the example starter catalog (recommended for new users)");
-    println!("  [2] Fetch a catalog from a GitHub repository");
+    println!("  [2] Fetch a catalog from a GitHub repository (e.g. thinkjones/dj-catalog-example)");
     println!("  [3] Use an existing local folder");
     println!("  [q] Quit\n");
 
@@ -82,7 +82,7 @@ pub fn ensure_catalog(cfg: &Config) -> Result<()> {
 }
 
 fn is_catalog_present(root: &Path) -> bool {
-    root.join("workflows.md").exists() || root.join("brew").exists()
+    root.join("workflows").is_dir() || root.join("brew").exists()
 }
 
 fn is_tty() -> bool {

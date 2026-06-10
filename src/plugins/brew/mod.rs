@@ -133,7 +133,6 @@ impl Plugin for Brew {
     fn list(&self, ctx: &PluginContext) -> Result<Vec<String>> {
         Ok(Self::entries(ctx).into_iter().map(|e| e.name).collect())
     }
-
 }
 
 #[cfg(test)]

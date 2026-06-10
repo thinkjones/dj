@@ -111,7 +111,6 @@ impl Plugin for Symlinks {
             .map(|s| format!("{} → {}", s.name, s.target))
             .collect())
     }
-
 }
 
 #[cfg(test)]

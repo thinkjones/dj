@@ -107,7 +107,6 @@ impl Plugin for Runtimes {
         out.extend(pms.into_iter().map(|pm| pm.name));
         Ok(out)
     }
-
 }
 
 #[cfg(test)]

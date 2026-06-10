@@ -26,17 +26,31 @@ fn cmd_use_example(cfg: &Config) -> Result<()> {
     let example = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("examples")
         .join("catalog");
-
     if example.exists() {
         copy_dir_all(&example, &dest)?;
-    } else {
-        // Extract embedded example catalog shipped inside the binary
-        crate::example_catalog::extract(&dest)?;
+        write_catalog_source(cfg, "example")?;
+        println!("Example catalog installed to {}", dest.display());
+        return Ok(());
     }
 
-    // Update config.toml with source
-    write_catalog_source(cfg, "example")?;
+    // Clone from public repo via gh
+    println!("→ Cloning example catalog from thinkjones/dj-catalog-example...");
+    if let Some(parent) = dest.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let status = Command::new("gh")
+        .args([
+            "repo",
+            "clone",
+            "thinkjones/dj-catalog-example",
+            &dest.to_string_lossy(),
+        ])
+        .status()?;
+    if !status.success() {
+        bail!("failed to clone thinkjones/dj-catalog-example — ensure gh is authenticated");
+    }
 
+    write_catalog_source(cfg, "example")?;
     println!("Example catalog installed to {}", dest.display());
     Ok(())
 }
@@ -47,7 +61,7 @@ fn cmd_use_local(cfg: &Config, path: &Path) -> Result<()> {
     }
 
     if !is_valid_catalog(path) {
-        bail!("path does not look like a dj catalog (missing plugin configs or workflows.md)");
+        bail!("path does not look like a dj catalog (missing plugin configs or workflows/ dir)");
     }
 
     // Write config.toml with new catalog_root
@@ -124,7 +138,7 @@ fn cmd_fetch(cfg: &Config, repo: &str, branch: &str) -> Result<()> {
 }
 
 fn is_valid_catalog(path: &Path) -> bool {
-    path.join("workflows.md").exists() || path.join("brew").exists()
+    path.join("workflows").is_dir() || path.join("brew").exists()
 }
 
 fn copy_dir_all(src: &Path, dst: &Path) -> Result<()> {

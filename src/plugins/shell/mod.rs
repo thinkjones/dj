@@ -83,7 +83,6 @@ impl Plugin for Shell {
     fn list(&self, ctx: &PluginContext) -> Result<Vec<String>> {
         Ok(Self::entries(ctx).into_iter().map(|f| f.name).collect())
     }
-
 }
 
 fn rewrite_sentinel(content: &str, begin: &str, end: &str, block: &str) -> String {

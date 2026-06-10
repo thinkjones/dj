@@ -1,4 +1,3 @@
-
 use crate::commands;
 use crate::config::{catalog_root, Config};
 use crate::plugins::{Health, HealthStatus, Manifest, PlanStep, Plugin, PluginContext};
@@ -90,7 +89,6 @@ impl Plugin for Dotfiles {
         }
         Ok(out)
     }
-
 }
 
 #[cfg(test)]

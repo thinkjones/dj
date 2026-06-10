@@ -1,5 +1,6 @@
 //! Embedded example catalog for `dj catalog use --example` when the binary
 //! is not running from the source tree.
+#![allow(dead_code)]
 use anyhow::Result;
 use std::path::Path;
 
@@ -14,8 +15,12 @@ const FILES: &[EmbeddedFile] = &[
         content: include_str!("../../examples/catalog/dj-catalog.toml"),
     },
     EmbeddedFile {
-        path: "workflows.md",
-        content: include_str!("../../examples/catalog/workflows.md"),
+        path: "workflows/setup.md",
+        content: include_str!("../../examples/catalog/workflows/setup.md"),
+    },
+    EmbeddedFile {
+        path: "workflows/dev-setup.md",
+        content: include_str!("../../examples/catalog/workflows/dev-setup.md"),
     },
     EmbeddedFile {
         path: "brew/config.md",

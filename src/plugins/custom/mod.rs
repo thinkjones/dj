@@ -91,7 +91,6 @@ impl Plugin for Custom {
     fn list(&self, ctx: &PluginContext) -> Result<Vec<String>> {
         Ok(Self::entries(ctx).into_iter().map(|e| e.name).collect())
     }
-
 }
 
 #[cfg(test)]

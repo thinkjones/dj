@@ -1,4 +1,3 @@
-
 use crate::commands;
 use crate::config::{catalog_root, Config};
 use crate::plugins::{Health, HealthStatus, Manifest, PlanStep, Plugin, PluginContext};
@@ -80,7 +79,6 @@ impl Plugin for Apm {
     fn list(&self, ctx: &PluginContext) -> Result<Vec<String>> {
         Ok(Self::stacks(ctx.cfg))
     }
-
 }
 
 #[cfg(test)]

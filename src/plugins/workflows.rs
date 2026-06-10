@@ -1,17 +1,45 @@
-//! Parse catalog/workflows.md into the workflow map the engine expands.
+//! Parse catalog/workflows/ directory into the workflow map the engine expands.
 use crate::cli::workflow::{Step, Workflow};
 use anyhow::{bail, Result};
 use std::collections::HashMap;
 use std::path::Path;
 
-/// Parse the workflows file. Returns empty if the file is absent.
-pub fn parse(path: &Path) -> Result<HashMap<String, Workflow>> {
-    let Ok(content) = std::fs::read_to_string(path) else {
+/// Parse all `*.md` files in `dir`. Each file stem is a workflow name.
+/// Returns empty if the directory is absent or contains no `.md` files.
+pub fn parse_dir(dir: &Path) -> Result<HashMap<String, Workflow>> {
+    let Ok(entries) = std::fs::read_dir(dir) else {
         return Ok(HashMap::new());
     };
-    let mut out: HashMap<String, Workflow> = HashMap::new();
-    let mut cur_name: Option<String> = None;
-    let mut cur_scope: Option<&'static str> = None; // "user" | "folder"
+    let mut out = HashMap::new();
+    for entry in entries {
+        let entry = entry?;
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("md") {
+            continue;
+        }
+        let stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default()
+            .to_string();
+        let filename = path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("unknown")
+            .to_string();
+        let content = std::fs::read_to_string(&path)?;
+        let wf = parse_one(&stem, &content, &filename)?;
+        out.insert(stem, wf);
+    }
+    Ok(out)
+}
+
+fn parse_one(_name: &str, content: &str, filename: &str) -> Result<Workflow> {
+    let mut wf = Workflow {
+        user: vec![],
+        folder: vec![],
+    };
+    let mut cur_scope: Option<&'static str> = None;
 
     for (i, raw) in content.lines().enumerate() {
         let line = raw.trim();
@@ -19,86 +47,113 @@ pub fn parse(path: &Path) -> Result<HashMap<String, Workflow>> {
         if line.is_empty() {
             continue;
         }
-        if let Some(rest) = line.strip_prefix("## ") {
-            let name = rest.trim().to_string();
-            cur_name = Some(name.clone());
-            cur_scope = None;
-            out.entry(name.clone()).or_insert_with(|| Workflow {
-                user: vec![],
-                folder: vec![],
-            });
-            continue;
+        if line.starts_with("# ") {
+            continue; // optional human-readable title, ignored
         }
-        if let Some(rest) = line.strip_prefix("### ") {
+        if let Some(rest) = line.strip_prefix("## ") {
             cur_scope = match rest.trim() {
                 "user" => Some("user"),
                 "folder" => Some("folder"),
-                other => bail!("workflows.md:{lineno}: unknown scope section '{other}'"),
+                other => bail!("{filename}:{lineno}: unknown scope section '{other}'"),
             };
             continue;
         }
-        if line.starts_with("# ") {
-            continue; // H1 title, ignored
-        }
         if let Some(rest) = line.strip_prefix("- ") {
-            let name = cur_name.clone().ok_or_else(|| {
-                anyhow::anyhow!("workflows.md:{lineno}: step before any '## workflow'")
-            })?;
             let scope = cur_scope.ok_or_else(|| {
-                anyhow::anyhow!("workflows.md:{lineno}: step before any '### user|folder'")
+                anyhow::anyhow!("{filename}:{lineno}: step before any '## user|folder'")
             })?;
             let mut toks = rest.split_whitespace();
             let step = Step {
                 name: toks.next().unwrap_or_default().to_string(),
                 args: toks.map(|s| s.to_string()).collect(),
             };
-            let wf = out.get_mut(&name).expect("workflow inserted at ## line");
             match scope {
                 "user" => wf.user.push(step),
                 _ => wf.folder.push(step),
-            };
+            }
             continue;
         }
-        bail!("workflows.md:{lineno}: unexpected line '{line}'");
+        bail!("{filename}:{lineno}: unexpected line '{line}'");
     }
-    Ok(out)
+    Ok(wf)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
+    use std::fs;
 
-    fn parse_str(s: &str) -> Result<HashMap<String, Workflow>> {
-        let mut f = tempfile::NamedTempFile::new().unwrap();
-        f.write_all(s.as_bytes()).unwrap();
-        parse(f.path())
+    fn make_dir(files: &[(&str, &str)]) -> tempfile::TempDir {
+        let dir = tempfile::TempDir::new().unwrap();
+        for (name, content) in files {
+            fs::write(dir.path().join(name), content).unwrap();
+        }
+        dir
     }
 
     #[test]
-    fn parses_scoped_steps_with_args() {
-        let ws = parse_str("# Workflows\n## dev-setup\n### user\n- apm core\n- claude\n### folder\n- permissions\n- claude\n").unwrap();
+    fn parses_per_file_workflows() {
+        let dir = make_dir(&[
+            (
+                "setup.md",
+                "## user\n- brew\n- runtimes\n## folder\n- dev-setup\n",
+            ),
+            (
+                "dev-setup.md",
+                "## user\n- claude\n## folder\n- claude\n- apm core\n",
+            ),
+        ]);
+        let ws = parse_dir(dir.path()).unwrap();
+        assert_eq!(ws.len(), 2);
+        let setup = &ws["setup"];
+        assert_eq!(setup.user[0].name, "brew");
+        assert_eq!(setup.user[1].name, "runtimes");
+        assert_eq!(setup.folder[0].name, "dev-setup");
         let dev = &ws["dev-setup"];
+        assert_eq!(dev.user[0].name, "claude");
         assert_eq!(
-            dev.user[0],
+            dev.folder[1],
             Step {
                 name: "apm".into(),
                 args: vec!["core".into()]
             }
         );
-        assert_eq!(dev.user[1].name, "claude");
-        assert_eq!(dev.folder[0].name, "permissions");
     }
 
     #[test]
-    fn missing_file_is_empty() {
-        assert!(parse(Path::new("/no/such/workflows.md"))
+    fn missing_dir_is_empty() {
+        assert!(parse_dir(Path::new("/no/such/workflows"))
             .unwrap()
             .is_empty());
     }
 
     #[test]
+    fn ignores_non_md_files() {
+        let dir = make_dir(&[
+            ("setup.md", "## user\n- brew\n"),
+            ("readme.txt", "not a workflow"),
+        ]);
+        let ws = parse_dir(dir.path()).unwrap();
+        assert_eq!(ws.len(), 1);
+        assert!(ws.contains_key("setup"));
+    }
+
+    #[test]
+    fn title_line_ignored() {
+        let dir = make_dir(&[("setup.md", "# Setup Workflow\n## user\n- brew\n")]);
+        let ws = parse_dir(dir.path()).unwrap();
+        assert_eq!(ws["setup"].user[0].name, "brew");
+    }
+
+    #[test]
     fn errors_on_step_before_scope() {
-        assert!(parse_str("## w\n- brew\n").is_err());
+        let dir = make_dir(&[("bad.md", "- brew\n")]);
+        assert!(parse_dir(dir.path()).is_err());
+    }
+
+    #[test]
+    fn errors_on_unknown_scope() {
+        let dir = make_dir(&[("bad.md", "## unknown\n- brew\n")]);
+        assert!(parse_dir(dir.path()).is_err());
     }
 }

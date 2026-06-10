@@ -15,7 +15,7 @@ impl Runtime {
     pub fn load(cfg: &Config) -> Result<Runtime> {
         let plugins = registry::built_ins();
         let root = catalog_root(cfg);
-        let workflows = workflows::parse(&root.join("workflows.md"))?;
+        let workflows = workflows::parse_dir(&root.join("workflows"))?;
         let rt = Runtime { plugins, workflows };
         rt.validate()?;
         Ok(rt)

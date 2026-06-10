@@ -71,7 +71,6 @@ impl Plugin for Permissions {
             .map(|t| t.name.to_string())
             .collect())
     }
-
 }
 
 #[cfg(test)]

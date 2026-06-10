@@ -1,5 +1,5 @@
 use anyhow::Result;
-use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, Table};
+use comfy_table::Table;
 use owo_colors::OwoColorize;
 use std::collections::HashSet;
 use std::process::Command;
@@ -14,7 +14,95 @@ use crate::{
     plugins::symlinks::config::parse as parse_symlinks,
 };
 
-pub fn run(cfg: &Config) -> Result<()> {
+/// Per-plugin install counts: (total, installed, missing).
+#[derive(Default, Copy, Clone)]
+pub struct PluginCounts {
+    pub total: usize,
+    pub installed: usize,
+    pub missing: usize,
+}
+
+/// Return install counts for a single plugin by name, if the catalog config exists.
+pub fn plugin_counts(cfg: &Config, name: &str) -> Option<PluginCounts> {
+    let root = catalog_root(cfg);
+    match name {
+        "brew" => {
+            let brew = parse_brew(&root.join("brew").join("config.md")).ok()?;
+            let installed_casks = installed_cask_set();
+            let mut counts = PluginCounts::default();
+            for e in brew {
+                if !arch_compatible(&e.arch) {
+                    continue;
+                }
+                let check_name = e.bin.as_deref().unwrap_or(&e.name);
+                let installed = check_binary(check_name)
+                    || (e.kind == BrewKind::Cask && installed_casks.contains(&e.name));
+                counts.total += 1;
+                if installed {
+                    counts.installed += 1;
+                } else {
+                    counts.missing += 1;
+                }
+            }
+            Some(counts)
+        }
+        "runtimes" => {
+            let path = root.join("runtimes").join("config.md");
+            let runtimes = parse_runtimes(&path).ok()?;
+            let pms = parse_package_managers(&path).ok()?;
+            let mut counts = PluginCounts::default();
+            for r in runtimes {
+                counts.total += 1;
+                if check_binary(&r.name) {
+                    counts.installed += 1;
+                } else {
+                    counts.missing += 1;
+                }
+            }
+            for pm in pms {
+                counts.total += 1;
+                if check_binary(&pm.name) {
+                    counts.installed += 1;
+                } else {
+                    counts.missing += 1;
+                }
+            }
+            Some(counts)
+        }
+        "custom" => {
+            let entries = parse_custom(&root.join("custom").join("config.md")).ok()?;
+            let mut counts = PluginCounts::default();
+            for c in entries {
+                counts.total += 1;
+                if check_binary(&c.name) {
+                    counts.installed += 1;
+                } else {
+                    counts.missing += 1;
+                }
+            }
+            Some(counts)
+        }
+        "symlinks" => {
+            let entries = parse_symlinks(&root.join("symlinks").join("config.md")).ok()?;
+            let mut counts = PluginCounts::default();
+            for s in entries {
+                counts.total += 1;
+                if crate::catalog::expand_tilde(&s.destination)
+                    .join(&s.name)
+                    .exists()
+                {
+                    counts.installed += 1;
+                } else {
+                    counts.missing += 1;
+                }
+            }
+            Some(counts)
+        }
+        _ => None,
+    }
+}
+
+pub fn run(cfg: &Config, detail: bool) -> Result<()> {
     let root = catalog_root(cfg);
 
     let brew = parse_brew(&root.join("brew").join("config.md")).unwrap_or_default();
@@ -34,98 +122,100 @@ pub fn run(cfg: &Config) -> Result<()> {
 
     let installed_casks = installed_cask_set();
 
+    let mut total_items = 0usize;
+    let mut installed_items = 0usize;
+    let mut missing_items = 0usize;
+
+    println!("Catalog: {}\n", root.display());
+
+    let mut sections: Vec<(String, Table)> = Vec::new();
+
     if !formulae.is_empty() {
-        section(
-            "Formulae",
-            "CLI tools and libraries installed by Homebrew into /opt/homebrew/bin",
-        );
-        let mut t = table();
-        for e in &formulae {
-            let check_name = e.bin.as_deref().unwrap_or(&e.name);
-            let status = arch_status(&e.arch, || yn(check_binary(check_name)));
-            let desc = desc_with_plugin(&e.description, &e.zsh_plugin);
-            t.add_row([&e.name, &desc, &status]);
+        let (title, t, totals) =
+            build_brew_section("Formulae", &formulae, detail, &installed_casks);
+        if detail || totals.missing > 0 {
+            sections.push((title, t));
         }
-        println!("{t}");
+        total_items += totals.total;
+        installed_items += totals.installed;
+        missing_items += totals.missing;
     }
 
     if !casks.is_empty() {
-        section(
-            "Casks",
-            "macOS GUI apps installed as .app bundles by Homebrew Cask",
-        );
-        let mut t = table();
-        for e in &casks {
-            let status = arch_status(&e.arch, || yn(installed_casks.contains(&e.name)));
-            let desc = desc_with_plugin(&e.description, &e.zsh_plugin);
-            t.add_row([&e.name, &desc, &status]);
+        let (title, t, totals) = build_brew_section("Casks", &casks, detail, &installed_casks);
+        if detail || totals.missing > 0 {
+            sections.push((title, t));
         }
-        println!("{t}");
+        total_items += totals.total;
+        installed_items += totals.installed;
+        missing_items += totals.missing;
     }
 
-    if !taps.is_empty() {
-        section(
-            "Taps",
-            "Third-party Homebrew repositories that unlock extra formulae and casks",
-        );
-        let mut t = table();
+    if !taps.is_empty() && detail {
+        let mut t = plain_table();
         for e in &taps {
             t.add_row([&e.name, &e.description, &format!("{}", "tapped".dimmed())]);
         }
-        println!("{t}");
+        sections.push(("Taps".to_string(), t));
     }
 
     if !runtimes.is_empty() {
-        section(
-            "Runtimes",
-            "Language version pins managed by mise — `mise use -g <name>@<version>`",
-        );
-        let mut t = table();
+        let mut t = plain_table();
+        let mut totals = Totals::default();
         for r in &runtimes {
-            let pin = format!("{}@{}", r.name, r.version);
-            t.add_row([r.name.as_str(), pin.as_str(), &yn(check_binary(&r.name))]);
+            let ok = check_binary(&r.name);
+            totals.add(ok);
+            if detail || !ok {
+                let pin = format!("{}@{}", r.name, r.version);
+                t.add_row([r.name.as_str(), pin.as_str(), &yn(ok)]);
+            }
         }
-        println!("{t}");
+        if detail || totals.missing > 0 {
+            sections.push(("Runtimes".to_string(), t));
+        }
+        total_items += totals.total;
+        installed_items += totals.installed;
+        missing_items += totals.missing;
     }
 
     if !package_managers.is_empty() {
-        section(
-            "Package Managers",
-            "Language-specific package installers bootstrapped outside Homebrew",
-        );
-        let mut t = table();
+        let mut t = plain_table();
+        let mut totals = Totals::default();
         for pm in &package_managers {
-            t.add_row([
-                pm.name.as_str(),
-                pm.description.as_str(),
-                &yn(check_binary(&pm.name)),
-            ]);
+            let ok = check_binary(&pm.name);
+            totals.add(ok);
+            if detail || !ok {
+                t.add_row([pm.name.as_str(), pm.description.as_str(), &yn(ok)]);
+            }
         }
-        println!("{t}");
+        if detail || totals.missing > 0 {
+            sections.push(("Package Managers".to_string(), t));
+        }
+        total_items += totals.total;
+        installed_items += totals.installed;
+        missing_items += totals.missing;
     }
 
     if !custom_installs.is_empty() {
-        section(
-            "Custom Installs",
-            "Tools with non-Homebrew install scripts — skipped if binary already on PATH",
-        );
-        let mut t = table();
+        let mut t = plain_table();
+        let mut totals = Totals::default();
         for c in &custom_installs {
-            t.add_row([
-                c.name.as_str(),
-                c.description.as_str(),
-                &yn(check_binary(&c.name)),
-            ]);
+            let ok = check_binary(&c.name);
+            totals.add(ok);
+            if detail || !ok {
+                t.add_row([c.name.as_str(), c.description.as_str(), &yn(ok)]);
+            }
         }
-        println!("{t}");
+        if detail || totals.missing > 0 {
+            sections.push(("Custom Installs".to_string(), t));
+        }
+        total_items += totals.total;
+        installed_items += totals.installed;
+        missing_items += totals.missing;
     }
 
-    if !shell_functions.is_empty() {
-        section(
-            "Shell Functions",
-            "zsh helpers injected into .zshrc as a sentinel block by `dj rebuild`",
-        );
-        let mut t = table();
+    if !shell_functions.is_empty() && detail {
+        let mut t = plain_table();
         for f in &shell_functions {
             t.add_row([
                 f.name.as_str(),
@@ -133,36 +223,110 @@ pub fn run(cfg: &Config) -> Result<()> {
                 &format!("{}", "catalog".dimmed()),
             ]);
         }
-        println!("{t}");
+        sections.push(("Shell Functions".to_string(), t));
     }
 
     if !symlinks.is_empty() {
-        section(
-            "Symlinks",
-            "paths symlinked into their destination directories (see catalog/symlinks/config.md)",
-        );
-        let (linked, missing): (Vec<_>, Vec<_>) = symlinks.iter().partition(|s| {
-            crate::catalog::expand_tilde(&s.destination)
+        let mut t = plain_table();
+        let mut totals = Totals::default();
+        for s in &symlinks {
+            let linked = crate::catalog::expand_tilde(&s.destination)
                 .join(&s.name)
-                .exists()
-        });
-        let names = symlinks
-            .iter()
-            .map(|s| s.name.as_str())
-            .collect::<Vec<_>>()
-            .join(", ");
-        let status = if missing.is_empty() {
-            format!("{}", format!("✅ all {} linked", linked.len()).green())
-        } else {
-            let m: Vec<_> = missing.iter().map(|s| s.name.as_str()).collect();
-            format!("{}", format!("⚠️  missing: {}", m.join(", ")).yellow())
-        };
-        let mut t = table();
-        t.add_row(["symlinks", &names, &status]);
-        println!("{t}");
+                .exists();
+            totals.add(linked);
+            if detail || !linked {
+                let status = if linked {
+                    format!("{}", "✅ linked".green())
+                } else {
+                    format!("{}", "❌ missing".red())
+                };
+                let target = format!("{} → {}", s.name, s.target);
+                t.add_row([s.name.as_str(), target.as_str(), status.as_str()]);
+            }
+        }
+        if detail || totals.missing > 0 {
+            sections.push(("Symlinks".to_string(), t));
+        }
+        total_items += totals.total;
+        installed_items += totals.installed;
+        missing_items += totals.missing;
+    }
+
+    for (title, table) in sections {
+        println!("{}", title.bold());
+        println!("{table}\n");
+    }
+
+    if missing_items == 0 {
+        println!(
+            "{}",
+            format!("✅ All {total_items} catalog items installed").green()
+        );
+    } else {
+        println!(
+            "{}",
+            format!(
+                "⚠️  {missing_items} of {total_items} catalog items missing ({installed_items} installed)"
+            )
+            .yellow()
+        );
     }
 
     Ok(())
+}
+
+#[derive(Default)]
+struct Totals {
+    total: usize,
+    installed: usize,
+    missing: usize,
+}
+
+impl Totals {
+    fn add(&mut self, ok: bool) {
+        self.total += 1;
+        if ok {
+            self.installed += 1;
+        } else {
+            self.missing += 1;
+        }
+    }
+}
+
+fn build_brew_section(
+    title: &str,
+    entries: &[&crate::catalog::BrewEntry],
+    detail: bool,
+    installed_casks: &HashSet<String>,
+) -> (String, Table, Totals) {
+    let mut t = plain_table();
+    let mut totals = Totals::default();
+    for e in entries {
+        let check_name = e.bin.as_deref().unwrap_or(&e.name);
+        let compat = arch_compatible(&e.arch);
+        let ok = if compat {
+            let installed = check_binary(check_name)
+                || (e.kind == BrewKind::Cask && installed_casks.contains(&e.name));
+            totals.add(installed);
+            installed
+        } else {
+            totals.total += 1;
+            true // treat skipped as not a problem
+        };
+        if detail || !ok {
+            let status = if compat {
+                yn(ok)
+            } else {
+                format!(
+                    "{}",
+                    format!("skipped ({})", e.arch.as_deref().unwrap_or("unknown")).dimmed()
+                )
+            };
+            let desc = desc_with_plugin(&e.description, &e.zsh_plugin);
+            t.add_row([&e.name, &desc, &status]);
+        }
+    }
+    (title.to_string(), t, totals)
 }
 
 fn desc_with_plugin(description: &str, zsh_plugin: &Option<String>) -> String {
@@ -172,28 +336,11 @@ fn desc_with_plugin(description: &str, zsh_plugin: &Option<String>) -> String {
     }
 }
 
-fn section(title: &str, subtitle: &str) {
-    println!("\n{}", title.bold());
-    println!("{}\n", subtitle.dimmed());
-}
-
-fn table() -> Table {
+fn plain_table() -> Table {
     let mut t = Table::new();
-    t.load_preset(UTF8_FULL)
-        .apply_modifier(UTF8_ROUND_CORNERS)
-        .set_header(["Name", "Description", "Status"]);
+    t.set_header(["Name", "Description", "Status"]);
+    t.set_width(100);
     t
-}
-
-fn arch_status(arch: &Option<String>, check: impl FnOnce() -> String) -> String {
-    if arch_compatible(arch) {
-        check()
-    } else {
-        format!(
-            "{}",
-            format!("skipped ({})", arch.as_deref().unwrap_or("unknown")).dimmed()
-        )
-    }
 }
 
 fn yn(ok: bool) -> String {

@@ -1,0 +1,86 @@
+[tools]
+rust = "stable"
+
+[tasks.release]
+description = "Cut a stable release: patch (default), minor, or major"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+
+BUMP="${1:-patch}"
+if [[ "$BUMP" != "patch" && "$BUMP" != "minor" && "$BUMP" != "major" ]]; then
+  echo "Usage: mise run release [patch|minor|major]"
+  exit 1
+fi
+
+CURRENT=$(grep '^version = ' Cargo.toml | head -n1 | sed 's/version = "//;s/"$//')
+IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+# Strip any pre-release suffix from PATCH
+PATCH_NUM=$(echo "$PATCH" | sed 's/-.*//')
+
+ case "$BUMP" in
+  major)
+    MAJOR=$((MAJOR + 1))
+    MINOR=0
+    PATCH_NUM=0
+    ;;
+  minor)
+    MINOR=$((MINOR + 1))
+    PATCH_NUM=0
+    ;;
+  patch)
+    PATCH_NUM=$((PATCH_NUM + 1))
+    ;;
+esac
+
+NEW="${MAJOR}.${MINOR}.${PATCH_NUM}"
+echo "Bumping $CURRENT -> $NEW"
+
+sed -i.bak -e "s/^version = \"$CURRENT\"$/version = \"$NEW\"/" Cargo.toml
+rm -f Cargo.toml.bak
+
+cargo check --quiet
+
+git add Cargo.toml Cargo.lock
+git commit -m "release: v$NEW" || true
+git tag "v$NEW"
+git push origin main "v$NEW"
+
+echo "Released v$NEW — CI will build and publish the release."
+"""
+
+[tasks.release-unstable]
+description = "Cut an unstable pre-release (auto-increments alpha/pre tag)"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+
+CURRENT=$(grep '^version = ' Cargo.toml | head -n1 | sed 's/version = "//;s/"$//')
+
+if [[ "$CURRENT" =~ -([a-z]+)\.([0-9]+)$ ]]; then
+  PRE="${BASH_REMATCH[1]}"
+  NUM="${BASH_REMATCH[2]}"
+  NUM=$((NUM + 1))
+  BASE=$(echo "$CURRENT" | sed "s/-${PRE}\.${BASH_REMATCH[2]}$//")
+  NEW="${BASE}-${PRE}.${NUM}"
+else
+  IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+  PATCH_NUM=$((PATCH + 1))
+  NEW="${MAJOR}.${MINOR}.${PATCH_NUM}-alpha.1"
+fi
+
+echo "Bumping $CURRENT -> $NEW"
+
+sed -i.bak -e "s/^version = \"$CURRENT\"$/version = \"$NEW\"/" Cargo.toml
+rm -f Cargo.toml.bak
+
+cargo check --quiet
+
+git add Cargo.toml Cargo.lock
+git commit -m "release: v$NEW" || true
+git tag "v$NEW"
+git push origin main "v$NEW"
+
+echo "Released v$NEW — CI will build and publish the pre-release."
+"""

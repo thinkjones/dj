@@ -7,23 +7,22 @@ use crate::config::{catalog_root, Config};
 
 pub fn ensure_catalog(cfg: &Config) -> Result<()> {
     let root = catalog_root(cfg);
-    let had_catalog = is_catalog_present(&root);
-
-    // Non-interactive: auto-install example
-    if !is_tty() {
-        if !had_catalog {
-            println!("No catalog found. Installing example catalog...");
-            catalog_run(cfg, CatalogAction::UseExample)?;
+    if is_catalog_present(&root) {
+        if !is_tty() {
+            println!("Catalog already exists at {}.", root.display());
         }
         return Ok(());
     }
 
-    // Always prompt in interactive mode
-    if had_catalog {
-        println!("A catalog already exists at {}\n", root.display());
-    } else {
-        println!("No dj catalog found at {}\n", root.display());
+    // Non-interactive: auto-install example
+    if !is_tty() {
+        println!("No catalog found. Installing example catalog...");
+        catalog_run(cfg, CatalogAction::UseExample)?;
+        return Ok(());
     }
+
+    // Interactive: prompt for setup
+    println!("No dj catalog found at {}\n", root.display());
     println!("How would you like to set up your catalog?\n");
     println!("  [1] Install the example starter catalog (recommended for new users)");
     println!("  [2] Fetch a catalog from a GitHub repository (e.g. thinkjones/dj-catalog-example)");
@@ -75,7 +74,7 @@ pub fn ensure_catalog(cfg: &Config) -> Result<()> {
     // After successful install, run doctor
     if result.is_ok() {
         println!("\n→ Running dj doctor...\n");
-        let _ = crate::commands::list::run(cfg);
+        let _ = crate::commands::list::run(cfg, false);
     }
 
     result

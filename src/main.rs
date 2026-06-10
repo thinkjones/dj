@@ -27,7 +27,11 @@ pub struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Health check across all plugins
-    Doctor,
+    Doctor {
+        /// Show full detail for all items, not just problems
+        #[arg(long)]
+        detail: bool,
+    },
     /// Show dj + plugin versions
     Version,
     /// Set up your catalog for the first time
@@ -119,8 +123,10 @@ fn main() -> anyhow::Result<()> {
                 }
             }
         }
-        Some(Commands::Doctor) => {
-            // Global doctor: fan out over all plugins for all supported scopes
+        Some(Commands::Doctor { detail }) => {
+            commands::list::run(&cfg, detail)?;
+
+            // Plugin-level doctor details only shown in detail mode or when unhealthy
             for p in rt.plugin_iter() {
                 let m = p.manifest();
                 for kind in &m.scopes {
@@ -130,9 +136,12 @@ fn main() -> anyhow::Result<()> {
                     };
                     match rt.doctor_one(&m.name, &scope, &cfg) {
                         Ok(health) => {
-                            println!("{}@{} — {:?}", m.name, scope_label(*kind), health.status);
-                            for d in &health.details {
-                                println!("  {}", d);
+                            if detail || !matches!(health.status, crate::plugins::HealthStatus::Ok)
+                            {
+                                println!("{}@{} — {:?}", m.name, scope_label(*kind), health.status);
+                                for d in &health.details {
+                                    println!("  {}", d);
+                                }
                             }
                         }
                         Err(e) => eprintln!("{}@{} — error: {}", m.name, scope_label(*kind), e),
@@ -147,20 +156,88 @@ fn main() -> anyhow::Result<()> {
             }
         }
         Some(Commands::Plugins) => {
+            use comfy_table::Table;
+
+            fn plugins_table(cfg: &Config, rt: &plugins::runtime::Runtime, user_only: bool) {
+                let root = config::catalog_root(cfg);
+                let mut t = Table::new();
+                t.set_header(["Plugin", "Description", "Catalog", "Items"]);
+                t.set_width(100);
+
+                let mut total_items = 0usize;
+                let mut installed_items = 0usize;
+                let mut missing_items = 0usize;
+
+                for p in rt.plugin_iter() {
+                    let m = p.manifest();
+                    let is_user = m.scopes.contains(&ScopeKind::User);
+                    let is_folder = m.scopes.contains(&ScopeKind::Folder);
+                    if user_only && (is_folder || !is_user) {
+                        continue;
+                    }
+                    if !user_only && !is_folder {
+                        continue;
+                    }
+
+                    let default_config = "config.md".to_string();
+                    let config_file = m
+                        .config
+                        .get(&ScopeKind::User)
+                        .or_else(|| m.config.get(&ScopeKind::Folder))
+                        .unwrap_or(&default_config);
+                    let catalog_path = format!("{}/{}", m.name, config_file);
+                    let full_path = root.join(&m.name).join(config_file);
+                    let configured = full_path.exists();
+
+                    let items = if configured {
+                        match commands::list::plugin_counts(cfg, &m.name) {
+                            Some(c) => {
+                                total_items += c.total;
+                                installed_items += c.installed;
+                                missing_items += c.missing;
+                                if c.total == 0 {
+                                    format!("{}", "configured".dimmed())
+                                } else if c.missing == 0 {
+                                    format!("{}", format!("{} installed", c.total).green())
+                                } else {
+                                    format!(
+                                        "{}",
+                                        format!("{} / {} missing", c.installed, c.missing).yellow()
+                                    )
+                                }
+                            }
+                            None => format!("{}", "configured".dimmed()),
+                        }
+                    } else {
+                        format!("{}", "not configured".dimmed())
+                    };
+
+                    t.add_row([&m.name, &m.summary, &catalog_path, &items]);
+                }
+                println!("{t}");
+
+                if total_items > 0 {
+                    if missing_items == 0 {
+                        println!(
+                            "{}",
+                            format!("✅ All {total_items} items installed").green()
+                        );
+                    } else {
+                        println!(
+                            "{}",
+                            format!(
+                                "⚠️  {missing_items} of {total_items} items missing ({installed_items} installed)"
+                            )
+                            .yellow()
+                        );
+                    }
+                }
+            }
+
             println!("{}", "Machine / User Setup".bold());
-            for p in rt.plugin_iter() {
-                let m = p.manifest();
-                if m.scopes.contains(&ScopeKind::User) && !m.scopes.contains(&ScopeKind::Folder) {
-                    print_plugin_line(&cfg, m);
-                }
-            }
+            plugins_table(&cfg, &rt, true);
             println!("\n{}", "Folder / Project Setup".bold());
-            for p in rt.plugin_iter() {
-                let m = p.manifest();
-                if m.scopes.contains(&ScopeKind::Folder) {
-                    print_plugin_line(&cfg, m);
-                }
-            }
+            plugins_table(&cfg, &rt, false);
         }
         Some(Commands::Onboard) => {
             cli::onboarding::ensure_catalog(&cfg)?;
@@ -172,22 +249,6 @@ fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
-}
-
-fn print_plugin_line(cfg: &Config, m: &plugins::Manifest) {
-    let root = config::catalog_root(cfg);
-    let config_file = root.join(&m.name).join(
-        m.config
-            .get(&ScopeKind::User)
-            .unwrap_or(&"config.md".to_string()),
-    );
-    let has_config = config_file.exists();
-    let status = if has_config {
-        "●".green().to_string()
-    } else {
-        "○".dimmed().to_string()
-    };
-    println!("  {:<12} {} {}", m.name, status, m.summary);
 }
 
 fn print_custom_help(rt: &plugins::runtime::Runtime) {

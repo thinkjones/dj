@@ -6,28 +6,28 @@ use owo_colors::OwoColorize;
 
 pub mod config;
 
-pub struct Custom {
+pub struct Scripts {
     manifest: Manifest,
 }
 
-impl Custom {
-    pub fn new() -> Custom {
-        Custom {
-            manifest: Manifest::from_toml(include_str!("plugin.toml")).expect("custom manifest"),
+impl Scripts {
+    pub fn new() -> Scripts {
+        Scripts {
+            manifest: Manifest::from_toml(include_str!("plugin.toml")).expect("scripts manifest"),
         }
     }
-    fn entries(ctx: &PluginContext) -> Vec<catalog::CustomInstall> {
+    fn entries(ctx: &PluginContext) -> Vec<catalog::ScriptInstall> {
         config::parse(&ctx.config_file).unwrap_or_default()
     }
 }
 
-impl Default for Custom {
+impl Default for Scripts {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Plugin for Custom {
+impl Plugin for Scripts {
     fn manifest(&self) -> &Manifest {
         &self.manifest
     }
@@ -36,7 +36,7 @@ impl Plugin for Custom {
         Ok(Self::entries(ctx)
             .into_iter()
             .map(|e| PlanStep {
-                description: format!("custom install: {}", e.name),
+                description: format!("script: {}", e.name),
                 mutates: true,
             })
             .collect())
@@ -56,7 +56,7 @@ impl Plugin for Custom {
                     format!("  {} already on PATH — skipping", c.name).dimmed()
                 );
             } else {
-                println!("{}", format!("  Installing {}...", c.name).cyan());
+                println!("{}", format!("  Running script {}...", c.name).cyan());
                 std::process::Command::new("sh")
                     .args(["-c", &c.install_script])
                     .status()?;
@@ -99,8 +99,8 @@ mod tests {
     use crate::cli::scope::ScopeKind;
     #[test]
     fn manifest_loads_and_is_user_scoped() {
-        let p = Custom::new();
-        assert_eq!(p.manifest().name, "custom");
+        let p = Scripts::new();
+        assert_eq!(p.manifest().name, "scripts");
         assert_eq!(p.manifest().scopes, vec![ScopeKind::User]);
     }
 }

@@ -67,7 +67,7 @@ The catalog is a plain directory of markdown files at `~/.config/dj/catalog/`. I
   workflows.md           # Named workflows
   brew/config.md         # Homebrew formulae, casks, and taps
   runtimes/config.md     # mise runtimes + package managers
-  custom/config.md       # Custom install scripts
+  scripts/               # Custom install scripts (one *.md file per purpose)
   shell/config.md        # zsh helper functions
   symlinks/config.md     # Symlink definitions
   claude/user.md         # Claude Code user settings

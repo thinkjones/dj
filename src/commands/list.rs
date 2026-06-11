@@ -8,8 +8,8 @@ use crate::{
     catalog::{arch_compatible, BrewKind},
     config::{catalog_root, Config},
     plugins::brew::config::parse as parse_brew,
-    plugins::custom::config::parse as parse_custom,
     plugins::runtimes::config::{parse_package_managers, parse_runtimes},
+    plugins::scripts::config::parse as parse_scripts,
     plugins::shell::config::parse as parse_shell,
     plugins::symlinks::config::parse as parse_symlinks,
 };
@@ -60,8 +60,8 @@ pub fn plugin_items(cfg: &Config, name: &str) -> Option<ItemStatus> {
             }
             Some(out)
         }
-        "custom" => {
-            let entries = parse_custom(&root.join("custom").join("config.md")).ok()?;
+        "scripts" => {
+            let entries = parse_scripts(&root.join("scripts").join("config.md")).ok()?;
             let mut out = Vec::new();
             for c in entries {
                 out.push((c.name.clone(), check_binary(&c.name)));
@@ -130,8 +130,8 @@ pub fn plugin_counts(cfg: &Config, name: &str) -> Option<PluginCounts> {
             }
             Some(counts)
         }
-        "custom" => {
-            let entries = parse_custom(&root.join("custom").join("config.md")).ok()?;
+        "scripts" => {
+            let entries = parse_scripts(&root.join("scripts").join("config.md")).ok()?;
             let mut counts = PluginCounts::default();
             for c in entries {
                 counts.total += 1;
@@ -170,7 +170,8 @@ pub fn run(cfg: &Config, detail: bool) -> Result<()> {
     let runtimes = parse_runtimes(&root.join("runtimes").join("config.md")).unwrap_or_default();
     let package_managers =
         parse_package_managers(&root.join("runtimes").join("config.md")).unwrap_or_default();
-    let custom_installs = parse_custom(&root.join("custom").join("config.md")).unwrap_or_default();
+    let script_installs =
+        parse_scripts(&root.join("scripts").join("config.md")).unwrap_or_default();
     let shell_functions = parse_shell(&root.join("shell").join("config.md")).unwrap_or_default();
     let symlinks = parse_symlinks(&root.join("symlinks").join("config.md")).unwrap_or_default();
 
@@ -257,10 +258,10 @@ pub fn run(cfg: &Config, detail: bool) -> Result<()> {
         missing_items += totals.missing;
     }
 
-    if !custom_installs.is_empty() {
+    if !script_installs.is_empty() {
         let mut t = plain_table();
         let mut totals = Totals::default();
-        for c in &custom_installs {
+        for c in &script_installs {
             let ok = check_binary(&c.name);
             totals.add(ok);
             if detail || !ok {
@@ -268,7 +269,7 @@ pub fn run(cfg: &Config, detail: bool) -> Result<()> {
             }
         }
         if detail || totals.missing > 0 {
-            sections.push(("Custom Installs".to_string(), t));
+            sections.push(("Scripts".to_string(), t));
         }
         total_items += totals.total;
         installed_items += totals.installed;

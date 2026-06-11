@@ -1,13 +1,13 @@
 pub mod apm;
 pub mod brew;
 pub mod claude;
-pub mod custom;
 pub mod dotfiles;
 pub mod lastrun;
 pub mod permissions;
 pub mod registry;
 pub mod runtime;
 pub mod runtimes;
+pub mod scripts;
 pub mod shell;
 pub mod symlinks;
 pub mod workflows;

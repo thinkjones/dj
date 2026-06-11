@@ -31,8 +31,12 @@ const FILES: &[EmbeddedFile] = &[
         content: include_str!("../../examples/catalog/runtimes/config.md"),
     },
     EmbeddedFile {
-        path: "custom/config.md",
-        content: include_str!("../../examples/catalog/custom/config.md"),
+        path: "scripts/zsh-shell-setup.md",
+        content: include_str!("../../examples/catalog/scripts/zsh-shell-setup.md"),
+    },
+    EmbeddedFile {
+        path: "scripts/apm.md",
+        content: include_str!("../../examples/catalog/scripts/apm.md"),
     },
     EmbeddedFile {
         path: "shell/config.md",

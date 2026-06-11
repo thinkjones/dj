@@ -6,6 +6,10 @@ use std::process::Command;
 use crate::config::{catalog_root, Config};
 
 pub fn run(cfg: &Config, dry_run: bool, yes: bool) -> Result<()> {
+    if which::which("chezmoi").is_err() {
+        bail!("chezmoi not found. Install chezmoi (https://chezmoi.io) to manage dotfiles.");
+    }
+
     let root = catalog_root(cfg);
     let chezmoi_source = root.join("chezmoi");
 

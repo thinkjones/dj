@@ -1,7 +1,7 @@
 ## user
 - brew
 - runtimes
-- custom
+- scripts
 - dotfiles
 - symlinks
 - shell

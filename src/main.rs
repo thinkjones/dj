@@ -271,6 +271,15 @@ fn print_custom_help(rt: &plugins::runtime::Runtime) {
         }
     }
 
+    let workflows = rt.workflows();
+    if !workflows.is_empty() {
+        println!("\n{}", "Workflows".bold());
+        for (name, wf) in workflows {
+            let steps = wf.user.len() + wf.folder.len();
+            println!("  {:<12} {} ({} steps)", name, "workflow".dimmed(), steps);
+        }
+    }
+
     println!("\n{}", "Tool Management".bold());
     println!("  {:<12} Regenerate all artifacts from catalog", "rebuild");
     println!("  {:<12} DESTRUCTIVE: wipe and reinstall dj", "reinstall");

@@ -1,6 +1,6 @@
 [package]
 name = "dj"
-version = "0.3.5"
+version = "0.3.6"
 edition = "2021"
 repository = "https://github.com/thinkjones/dj"
 description = "macOS developer workstation manager"

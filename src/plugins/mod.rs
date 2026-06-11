@@ -31,6 +31,7 @@ pub struct Manifest {
     pub summary: String,
     pub version: String,
     pub scopes: Vec<ScopeKind>,
+    #[allow(dead_code)]
     pub cadence: Cadence,
     /// scope -> config filename under catalog/<name>/
     pub config: BTreeMap<ScopeKind, String>,

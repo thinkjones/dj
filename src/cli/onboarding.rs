@@ -1,4 +1,5 @@
 use anyhow::{bail, Result};
+use owo_colors::OwoColorize;
 use std::io::{self, Write};
 use std::path::Path;
 
@@ -71,10 +72,23 @@ pub fn ensure_catalog(cfg: &Config) -> Result<()> {
         }
     };
 
-    // After successful install, run doctor
+    // After successful install, show getting-started guide
     if result.is_ok() {
-        println!("\n→ Running dj doctor...\n");
-        let _ = crate::commands::list::run(cfg, false);
+        println!("\n{}", "✓ Catalog installed successfully!".green().bold());
+        println!();
+        println!("{}", "Common commands:".bold());
+        println!("  dj doctor            Check what’s installed and what’s missing");
+        println!("  dj doctor --detail   Show full status for every catalog item");
+        println!("  dj plugins           List all plugins and their catalog config");
+        println!();
+        println!("{}", "Run a plugin:".bold());
+        println!("  dj <plugin> --user          Run a plugin for your user");
+        println!("  dj <plugin> --folder        Run a plugin for the current folder");
+        println!("  dj <plugin> --dry-run ...   Preview what a plugin would do");
+        println!();
+        println!("{}", "Get help for any plugin:".bold());
+        println!("  dj <plugin>          Show usage, config path, and items");
+        println!();
     }
 
     result

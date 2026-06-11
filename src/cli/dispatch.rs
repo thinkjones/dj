@@ -47,10 +47,65 @@ fn run_plugin_verb(cfg: &Config, rt: &Runtime, inv: &Invocation, yes: bool) -> R
         Verb::Info => {
             let m = p.manifest();
             println!("{} — {}", m.name.bold(), m.summary);
-            let scopes: Vec<_> = m.scopes.iter().map(|k| scope_label(*k)).collect();
-            println!("  scopes: {}", scopes.join(", "));
-            println!("  version: {}", m.version);
-            println!("  cadence: {:?}", m.cadence);
+            println!();
+
+            // Usage examples based on supported scopes
+            println!("{}", "Usage".bold());
+            if m.scopes.contains(&ScopeKind::User) {
+                println!(
+                    "  dj {} --user          {}",
+                    m.name,
+                    "Run for user scope".dimmed()
+                );
+            }
+            if m.scopes.contains(&ScopeKind::Folder) {
+                println!(
+                    "  dj {} --folder [PATH] {}",
+                    m.name,
+                    "Run for folder/project scope".dimmed()
+                );
+            }
+            println!(
+                "  dj {} doctor          {}",
+                m.name,
+                "Health check".dimmed()
+            );
+            println!(
+                "  dj {} list            {}",
+                m.name,
+                "List configured items".dimmed()
+            );
+            println!(
+                "  dj {} --dry-run ...   {}",
+                m.name,
+                "Preview changes without applying".dimmed()
+            );
+            println!();
+
+            // Catalog config location
+            let root = crate::config::catalog_root(cfg);
+            let default_config = "config.md".to_string();
+            let config_file = m
+                .config
+                .get(&ScopeKind::User)
+                .or_else(|| m.config.get(&ScopeKind::Folder))
+                .unwrap_or(&default_config);
+            let config_path = root.join(&m.name).join(config_file);
+            println!("{} {}", "Catalog:".bold(), config_path.display());
+            println!();
+
+            // List items if available
+            let user_scope = Scope::User;
+            match rt.list_one(&m.name, &user_scope, cfg) {
+                Ok(items) if !items.is_empty() => {
+                    println!("{} ({})", "Items".bold(), items.len());
+                    for item in items {
+                        println!("  • {}", item);
+                    }
+                }
+                _ => {}
+            }
+
             Ok(())
         }
         Verb::Version => {

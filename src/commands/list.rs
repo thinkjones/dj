@@ -22,6 +22,67 @@ pub struct PluginCounts {
     pub missing: usize,
 }
 
+/// Per-item status for a plugin.
+pub type ItemStatus = Vec<(String, bool)>;
+
+/// Return per-item (name, installed) statuses for a plugin, if known.
+pub fn plugin_items(cfg: &Config, name: &str) -> Option<ItemStatus> {
+    let root = catalog_root(cfg);
+    match name {
+        "brew" => {
+            let brew = parse_brew(&root.join("brew").join("config.md")).ok()?;
+            let installed_casks = installed_cask_set();
+            let mut out = Vec::new();
+            for e in brew {
+                if !arch_compatible(&e.arch) {
+                    continue;
+                }
+                let check_name = e.bin.as_deref().unwrap_or(&e.name);
+                let installed = check_binary(check_name)
+                    || (e.kind == BrewKind::Cask && installed_casks.contains(&e.name));
+                out.push((e.name.clone(), installed));
+            }
+            Some(out)
+        }
+        "runtimes" => {
+            let path = root.join("runtimes").join("config.md");
+            let runtimes = parse_runtimes(&path).ok()?;
+            let pms = parse_package_managers(&path).ok()?;
+            let mut out = Vec::new();
+            for r in runtimes {
+                out.push((
+                    format!("{}@{} (runtime)", r.name, r.version),
+                    check_binary(&r.name),
+                ));
+            }
+            for pm in pms {
+                out.push((pm.name.clone(), check_binary(&pm.name)));
+            }
+            Some(out)
+        }
+        "custom" => {
+            let entries = parse_custom(&root.join("custom").join("config.md")).ok()?;
+            let mut out = Vec::new();
+            for c in entries {
+                out.push((c.name.clone(), check_binary(&c.name)));
+            }
+            Some(out)
+        }
+        "symlinks" => {
+            let entries = parse_symlinks(&root.join("symlinks").join("config.md")).ok()?;
+            let mut out = Vec::new();
+            for s in entries {
+                let linked = crate::catalog::expand_tilde(&s.destination)
+                    .join(&s.name)
+                    .exists();
+                out.push((s.name.clone(), linked));
+            }
+            Some(out)
+        }
+        _ => None,
+    }
+}
+
 /// Return install counts for a single plugin by name, if the catalog config exists.
 pub fn plugin_counts(cfg: &Config, name: &str) -> Option<PluginCounts> {
     let root = catalog_root(cfg);

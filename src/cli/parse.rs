@@ -14,7 +14,7 @@ pub struct Invocation {
 }
 
 /// Parse tokens of the form:
-///   <name> [verb] [args…] [--user | --folder [path]] [--dry-run] [-- raw…]
+///   <name> [verb] [args…] [--scope user|folder] [--path PATH] [--dry-run] [-- raw…]
 pub fn parse(tokens: &[String]) -> Result<Invocation> {
     let mut iter = tokens.iter().peekable();
     let name = match iter.next() {
@@ -43,27 +43,36 @@ pub fn parse(tokens: &[String]) -> Result<Invocation> {
         }
         match tok.as_str() {
             "--" => passthrough = true,
-            "--user" => scope = Some(Scope::User),
-            "--folder" => {
-                let path = match iter.peek() {
-                    Some(p) if !p.starts_with("--") => {
-                        let p = (*p).clone();
-                        iter.next();
-                        PathBuf::from(p)
-                    }
-                    _ => PathBuf::new(),
+            "--scope" => {
+                let val = iter
+                    .next()
+                    .ok_or_else(|| anyhow::anyhow!("--scope requires a value (user or folder)"))?
+                    .as_str();
+                scope = Some(match val {
+                    "user" => Scope::User,
+                    "folder" => Scope::Folder(PathBuf::new()),
+                    other => bail!("invalid --scope '{}': expected 'user' or 'folder'", other),
+                });
+            }
+            "--path" => {
+                let val = iter
+                    .next()
+                    .ok_or_else(|| anyhow::anyhow!("--path requires a value"))?
+                    .as_str();
+                scope = match scope {
+                    Some(Scope::Folder(_)) => Some(Scope::Folder(PathBuf::from(val))),
+                    _ => bail!("--path can only be used with --scope folder"),
                 };
-                scope = Some(Scope::Folder(path));
             }
             "--dry-run" => dry_run = true,
             other => args.push(other.to_string()),
         }
     }
 
-    let verb = resolve_verb(explicit_verb, scope.is_some());
+    let verb = resolve_verb(explicit_verb);
 
-    if verb.mutates() && scope.is_none() {
-        bail!("'{} run' requires a scope: add --user or --folder", name);
+    if verb == Verb::Install && scope.is_none() {
+        bail!("'{} install' requires --scope user|folder", name);
     }
 
     Ok(Invocation {
@@ -91,35 +100,54 @@ mod tests {
     }
 
     #[test]
-    fn scope_flag_implies_run() {
-        let inv = parse(&toks(&["symlinks", "--user"])).unwrap();
-        assert_eq!(inv.verb, Verb::Run);
+    fn install_requires_scope() {
+        let err = parse(&toks(&["symlinks", "install"])).unwrap_err();
+        assert!(err.to_string().contains("requires --scope"));
+    }
+
+    #[test]
+    fn install_with_scope_user() {
+        let inv = parse(&toks(&["brew", "install", "--scope", "user"])).unwrap();
+        assert_eq!(inv.verb, Verb::Install);
         assert_eq!(inv.scope, Some(Scope::User));
     }
 
     #[test]
-    fn inline_arg_before_scope() {
-        let inv = parse(&toks(&["apm", "core", "--user"])).unwrap();
-        assert_eq!(inv.verb, Verb::Run);
-        assert_eq!(inv.args, vec!["core".to_string()]);
+    fn install_with_scope_folder() {
+        let inv = parse(&toks(&[
+            "brew", "install", "--scope", "folder", "--path", "/tmp",
+        ]))
+        .unwrap();
+        assert_eq!(inv.verb, Verb::Install);
+        assert_eq!(inv.scope, Some(Scope::Folder(PathBuf::from("/tmp"))));
     }
 
     #[test]
-    fn explicit_run_without_scope_errors() {
-        let err = parse(&toks(&["symlinks", "run"])).unwrap_err();
-        assert!(err.to_string().contains("requires a scope"));
-    }
-
-    #[test]
-    fn folder_with_path() {
-        let inv = parse(&toks(&["claude", "--folder", "/tmp/x"])).unwrap();
-        assert_eq!(inv.scope, Some(Scope::Folder(PathBuf::from("/tmp/x"))));
-    }
-
-    #[test]
-    fn dry_run_and_passthrough() {
-        let inv = parse(&toks(&["dotfiles", "--user", "--dry-run", "--", "--weird"])).unwrap();
+    fn dry_run_flag() {
+        let inv = parse(&toks(&["brew", "install", "--scope", "user", "--dry-run"])).unwrap();
         assert!(inv.dry_run);
+    }
+
+    #[test]
+    fn explicit_info_verb() {
+        let inv = parse(&toks(&["brew", "info"])).unwrap();
+        assert_eq!(inv.verb, Verb::Info);
+    }
+
+    #[test]
+    fn status_verb() {
+        let inv = parse(&toks(&["brew", "status", "--scope", "user"])).unwrap();
+        assert_eq!(inv.verb, Verb::Status);
+        assert_eq!(inv.scope, Some(Scope::User));
+    }
+
+    #[test]
+    fn passthrough_args() {
+        let inv = parse(&toks(&[
+            "apm", "install", "--scope", "user", "--", "--weird",
+        ]))
+        .unwrap();
+        assert_eq!(inv.verb, Verb::Install);
         assert_eq!(inv.args, vec!["--weird".to_string()]);
     }
 
@@ -130,15 +158,19 @@ mod tests {
     }
 
     #[test]
-    fn multiple_scope_flags_last_wins() {
-        let inv = parse(&toks(&["cmd", "--user", "--folder", "/tmp"])).unwrap();
-        assert!(matches!(inv.scope, Some(Scope::Folder(_))));
+    fn invalid_scope_value() {
+        let err = parse(&toks(&["brew", "install", "--scope", "invalid"])).unwrap_err();
+        assert!(err.to_string().contains("invalid --scope"));
     }
 
     #[test]
-    fn folder_without_path_then_dry_run() {
-        let inv = parse(&toks(&["cmd", "--folder", "--dry-run"])).unwrap();
-        assert!(matches!(inv.scope, Some(Scope::Folder(_))));
-        assert!(inv.dry_run);
+    fn path_without_folder_scope_errors() {
+        let err = parse(&toks(&[
+            "brew", "install", "--scope", "user", "--path", "/tmp",
+        ]))
+        .unwrap_err();
+        assert!(err
+            .to_string()
+            .contains("--path can only be used with --scope folder"));
     }
 }

@@ -1,40 +1,31 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Verb {
-    Run,
-    Doctor,
+    Install,
+    Status,
     Version,
-    List,
     Info,
 }
 
 impl Verb {
     pub fn from_token(tok: &str) -> Option<Verb> {
         match tok {
-            "run" => Some(Verb::Run),
-            "doctor" => Some(Verb::Doctor),
+            "install" => Some(Verb::Install),
+            "status" => Some(Verb::Status),
             "version" => Some(Verb::Version),
-            "list" => Some(Verb::List),
             "info" => Some(Verb::Info),
             _ => None,
         }
     }
 
     pub fn mutates(self) -> bool {
-        matches!(self, Verb::Run)
+        matches!(self, Verb::Install)
     }
 }
 
-/// Resolve the effective verb from an explicit verb token (if any) and whether a
-/// scope flag was supplied. Rules from the spec:
-///   - explicit verb wins
-///   - else a scope flag implies Run
-///   - else Info (safe default)
-pub fn resolve_verb(explicit: Option<Verb>, has_scope: bool) -> Verb {
-    match (explicit, has_scope) {
-        (Some(v), _) => v,
-        (None, true) => Verb::Run,
-        (None, false) => Verb::Info,
-    }
+/// Resolve the effective verb from an explicit verb token (if any).
+/// With no explicit verb, defaults to Info.
+pub fn resolve_verb(explicit: Option<Verb>) -> Verb {
+    explicit.unwrap_or(Verb::Info)
 }
 
 #[cfg(test)]
@@ -43,23 +34,19 @@ mod tests {
 
     #[test]
     fn parses_known_verbs() {
-        assert_eq!(Verb::from_token("run"), Some(Verb::Run));
+        assert_eq!(Verb::from_token("install"), Some(Verb::Install));
+        assert_eq!(Verb::from_token("status"), Some(Verb::Status));
         assert_eq!(Verb::from_token("info"), Some(Verb::Info));
         assert_eq!(Verb::from_token("core"), None);
     }
 
     #[test]
     fn bare_name_defaults_to_info() {
-        assert_eq!(resolve_verb(None, false), Verb::Info);
+        assert_eq!(resolve_verb(None), Verb::Info);
     }
 
     #[test]
-    fn scope_flag_implies_run() {
-        assert_eq!(resolve_verb(None, true), Verb::Run);
-    }
-
-    #[test]
-    fn explicit_verb_wins_over_scope() {
-        assert_eq!(resolve_verb(Some(Verb::Doctor), true), Verb::Doctor);
+    fn explicit_verb_wins() {
+        assert_eq!(resolve_verb(Some(Verb::Status)), Verb::Status);
     }
 }

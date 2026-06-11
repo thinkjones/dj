@@ -26,8 +26,8 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Health check across all plugins
-    Doctor {
+    /// Show install status for all catalog items
+    Status {
         /// Show full detail for all items, not just problems
         #[arg(long)]
         detail: bool,
@@ -55,7 +55,7 @@ enum Commands {
     },
     /// Show all installed plugins and their catalog actions
     Plugins,
-    /// <plugin|workflow> [verb] [args] [--user|--folder] [--dry-run]
+    /// <plugin|workflow> [verb] [args] [--scope user|folder] [--path PATH] [--dry-run]
     #[command(external_subcommand)]
     External(Vec<String>),
 }
@@ -124,10 +124,10 @@ fn main() -> anyhow::Result<()> {
                 None => commands::completions::install(false, &mut cli_cmd)?,
             }
         }
-        Some(Commands::Doctor { detail }) => {
+        Some(Commands::Status { detail }) => {
             commands::list::run(&cfg, detail)?;
 
-            // Plugin-level doctor details only shown in detail mode or when unhealthy
+            // Plugin-level status details only shown in detail mode or when unhealthy
             for p in rt.plugin_iter() {
                 let m = p.manifest();
                 for kind in &m.scopes {
@@ -290,7 +290,10 @@ fn print_custom_help(rt: &plugins::runtime::Runtime) {
         "  {:<12} Show all installed plugins and catalog actions",
         "plugins"
     );
-    println!("  {:<12} Health check across all plugins", "doctor");
+    println!(
+        "  {:<12} Show install status for all catalog items",
+        "status"
+    );
     println!("  {:<12} Show dj + plugin versions", "version");
     println!("  {:<12} Set up your catalog for the first time", "onboard");
     println!(

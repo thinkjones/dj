@@ -100,6 +100,26 @@ impl Plugin for Brew {
         std::fs::write(&out, &brew)?;
         println!("  Wrote {}", out.display());
 
+        // Trust third-party taps and packages before bundle so brew doesn't skip them.
+        for e in &entries {
+            if !catalog::arch_compatible(&e.arch) {
+                continue;
+            }
+            let name = &e.name;
+            // Third-party taps/formulae/casks contain a slash (e.g. owner/tap or tap/formula).
+            if name.contains('/') {
+                println!("  Trusting {}...", name);
+                if let Ok(status) = std::process::Command::new("brew")
+                    .args(["trust", name])
+                    .status()
+                {
+                    if !status.success() {
+                        println!("    Warning: brew trust {} returned an error", name);
+                    }
+                }
+            }
+        }
+
         // Run brew bundle
         println!("Running brew bundle...");
         let status = std::process::Command::new("brew")

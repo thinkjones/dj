@@ -37,10 +37,10 @@ pub struct PackageManager {
     pub install_script: String,
 }
 
-// ── Custom installs ───────────────────────────────────────────────────────────
+// ── Script installs ───────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-pub struct CustomInstall {
+pub struct ScriptInstall {
     pub name: String,
     pub install_script: String,
     pub description: String,

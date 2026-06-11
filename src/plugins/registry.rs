@@ -6,7 +6,7 @@ pub fn built_ins() -> Vec<Box<dyn Plugin>> {
         Box::new(crate::plugins::apm::Apm::new()),
         Box::new(crate::plugins::brew::Brew::new()),
         Box::new(crate::plugins::claude::Claude::new()),
-        Box::new(crate::plugins::custom::Custom::new()),
+        Box::new(crate::plugins::scripts::Scripts::new()),
         Box::new(crate::plugins::dotfiles::Dotfiles::new()),
         Box::new(crate::plugins::permissions::Permissions::new()),
         Box::new(crate::plugins::runtimes::Runtimes::new()),

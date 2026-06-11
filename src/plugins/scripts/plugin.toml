@@ -1,4 +1,4 @@
-name = "custom"
+name = "scripts"
 summary = "custom install scripts"
 version = "0.1.0"
 scopes = ["user"]

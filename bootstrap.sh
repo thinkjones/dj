@@ -4,20 +4,37 @@ set -euo pipefail
 REPO="thinkjones/dj"
 INSTALL_DIR="${HOME}/.local/bin"
 
+# Detect OS
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+case "$OS" in
+    darwin)
+        OS_TARGET="apple-darwin"
+        ;;
+    linux)
+        OS_TARGET="unknown-linux-gnu"
+        ;;
+    *)
+        echo "Unsupported OS: $OS"
+        exit 1
+        ;;
+esac
+
 # Detect architecture
 ARCH=$(uname -m)
 case "$ARCH" in
     arm64|aarch64)
-        TARGET="aarch64-apple-darwin"
+        ARCH_TARGET="aarch64"
         ;;
-    x86_64)
-        TARGET="x86_64-apple-darwin"
+    x86_64|amd64)
+        ARCH_TARGET="x86_64"
         ;;
     *)
         echo "Unsupported architecture: $ARCH"
         exit 1
         ;;
 esac
+
+TARGET="${ARCH_TARGET}-${OS_TARGET}"
 
 echo "→ Detected architecture: $TARGET"
 

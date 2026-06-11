@@ -51,7 +51,7 @@ enum Commands {
     /// Generate/install shell completions
     Completions {
         #[command(subcommand)]
-        cmd: CompletionsCmd,
+        cmd: Option<CompletionsCmd>,
     },
     /// Show all installed plugins and their catalog actions
     Plugins,
@@ -68,7 +68,7 @@ enum CompletionsCmd {
     Fish,
     /// Print zsh completions to stdout
     Zsh,
-    /// Auto-detect current shell and install completions
+    /// Auto-detect current shell and install completions (default)
     Install {
         #[arg(short = 'y', long)]
         yes: bool,
@@ -109,18 +109,19 @@ fn main() -> anyhow::Result<()> {
         Some(Commands::Completions { cmd }) => {
             let mut cli_cmd = Cli::command();
             match cmd {
-                CompletionsCmd::Bash => {
+                Some(CompletionsCmd::Bash) => {
                     commands::completions::print_completions(Shell::Bash, &mut cli_cmd)
                 }
-                CompletionsCmd::Fish => {
+                Some(CompletionsCmd::Fish) => {
                     commands::completions::print_completions(Shell::Fish, &mut cli_cmd)
                 }
-                CompletionsCmd::Zsh => {
+                Some(CompletionsCmd::Zsh) => {
                     commands::completions::print_completions(Shell::Zsh, &mut cli_cmd)
                 }
-                CompletionsCmd::Install { yes } => {
+                Some(CompletionsCmd::Install { yes }) => {
                     commands::completions::install(yes, &mut cli_cmd)?
                 }
+                None => commands::completions::install(false, &mut cli_cmd)?,
             }
         }
         Some(Commands::Doctor { detail }) => {

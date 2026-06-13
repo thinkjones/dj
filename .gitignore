@@ -10,7 +10,7 @@ Cargo.lock
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
 
 # Thumbnails
 ._*
@@ -36,3 +36,15 @@ Temporary Items
 *.icloud
 
 # End of https://www.toptal.com/developers/gitignore/api/macos
+
+
+# Gas Town (added by gt)
+.runtime/
+.claude/
+.opencode/
+.logs/
+__pycache__/
+state.json
+CLAUDE.md
+CLAUDE.local.md
+GEMINI.md

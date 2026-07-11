@@ -83,21 +83,21 @@ mod tests {
 
     #[test]
     fn flattens_parent_and_leaf() {
-        assert_eq!(link_name("~/dev/fs-website/docs"), "fs-website-docs");
-        assert_eq!(link_name("~/dev/dj"), "dev-dj");
+        assert_eq!(link_name("~/dev/repos/fs-website/docs"), "fs-website-docs");
+        assert_eq!(link_name("~/dev/repos/dj"), "dev-dj");
         assert_eq!(link_name("~/.local"), ".local");
     }
 
     #[test]
     fn groups_targets_under_destination() {
         let links = parse_str(
-            "# ~/dev/repos\n\n## Four Signals\n~/dev/fs-website/docs\n~/dev/fs-news-digest/docs\n",
+            "# ~/dev/repos\n\n## Four Signals\n~/dev/repos/fs-website/docs\n~/dev/fs-news-digest/docs\n",
         )
         .unwrap();
         assert_eq!(links.len(), 2);
         assert_eq!(links[0].name, "fs-website-docs");
         assert_eq!(links[0].destination, "~/dev/repos");
-        assert_eq!(links[0].target, "~/dev/fs-website/docs");
+        assert_eq!(links[0].target, "~/dev/repos/fs-website/docs");
         assert_eq!(links[1].name, "fs-news-digest-docs");
     }
 
